@@ -1,0 +1,53 @@
+{
+  "categories": [
+    {
+      "id": "frontend",
+      "name": "Frontend Development",
+      "color": "cyan",
+      "skills": [
+        {
+          "id": "fe-1",
+          "title": "HTML & CSS / Tailwind",
+          "status": "completed",
+          "xpReward": 100,
+          "description": "Уверенная верстка, адаптивный дизайн и стилизация."
+        },
+        {
+          "id": "fe-2",
+          "title": "JavaScript (ES6+)",
+          "status": "completed",
+          "xpReward": 150,
+          "description": "Асинхронность, работа с DOM и современный синтаксис."
+        },
+        {
+          "id": "fe-3",
+          "title": "React & State Management",
+          "status": "in-progress",
+          "xpReward": 200,
+          "description": "Компоненты, хуки (useState, useEffect)."
+        }
+      ]
+    },
+    {
+      "id": "backend",
+      "name": "Backend & Database",
+      "color": "purple",
+      "skills": [
+        {
+          "id": "be-1",
+          "title": "Python & Flask",
+          "status": "in-progress",
+          "xpReward": 150,
+          "description": "Создание RESTful API и маршрутизация."
+        },
+        {
+          "id": "be-2",
+          "title": "PostgreSQL & Elasticsearch",
+          "status": "locked",
+          "xpReward": 250,
+          "description": "Реляционные базы данных и поиск."
+        }
+      ]
+    }
+  ]
+}
