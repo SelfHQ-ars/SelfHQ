@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Trophy, CheckCircle, Clock, Zap, BookOpen, Flame, BookText, Plus, Trash2, ChevronRight, Sparkles, Sword } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 
+// Импортируем картинки прямо из папки public/src, чтобы сборщик Vite правильно привязал пути при деплое
+import bgImg from '/bg.jpg';
+import avatarImg from '/avatar.jpg';
+
 export default function App() {
   // Живой блок qw (погода, валюта, IT-новости)
   const [weather, setWeather] = React.useState({ temp: '...', desc: 'загрузка...' });
