@@ -150,34 +150,34 @@ export default function App() {
     setNewDiaryText('');
   };
 
-  return (
-    <div 
-      className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"
-      style={{
-        backgroundImage: `linear-gradient(rgba(2, 2, 2, 0.8), rgba(3, 3, 3, 0.85)), url('/bg.jpg')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      
-      {/* Декоративный фон в стиле хаори Танджиро (клетка) */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
+    return (
+      <div 
+        className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"
+        style={{
+          backgroundImage: `linear-gradient(rgba(2, 2, 2, 0.8), rgba(3, 3, 3, 0.85)), url('/bg.jpg')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        
+        {/* Декоративный фон в стиле хаори Танджиро (клетка) */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
 
-      {/* Шапка / Навигация */}
-      <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
-        <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-  <img 
-    src="/avatar.jpg" 
-    alt="Avatar" 
-    className="w-full h-full object-cover rounded-full border border-black"
-  />
-</div>
-          <div>
+        {/* Шапка / Навигация */}
+        <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+    <img 
+      src="/avatar.jpg" 
+      alt="Avatar" 
+      className="w-full h-full object-cover rounded-full border border-black"
+    />
+  </div>
+            <div>
             <h1 className="font-extrabold tracking-wider text-xl bg-gradient-to-r from-red-500 via-orange-500 to-amber-300 bg-clip-text text-transparent">SelfHQ</h1>
-            <p className="text-xs text-white/80 font-mono tracking-widest uppercase">Путь Гондона</p>
+            <p className="text-xs text-white/80 font-mono tracking-widest uppercase">Путь </p>
           </div>
         </div>
 
