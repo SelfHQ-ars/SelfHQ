@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, CheckCircle, Clock, Zap, BookOpen, Flame, BookText, Plus, Trash2, ChevronRight, Sparkles, Sword } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 
-// Импортируем картинки прямо из папки public/src, чтобы сборщик Vite правильно привязал пути при деплое
-import bgImg from '/bg.jpg';
-import avatarImg from '/avatar.jpg';
-
 export default function App() {
+  // Базовый путь для ассетов из папки public (работает и локально, и на GitHub Pages)
+  const baseUrl = import.meta.env.BASE_URL || '/';
+
   // Живой блок qw (погода, валюта, IT-новости)
-  const [weather, setWeather] = React.useState({ temp: '...', desc: 'загрузка...' });
-  const [rates, setRates] = React.useState({ usd: '...', rub: '...' });
-  const [news, setNews] = React.useState([
+  const [weather, setWeather] = useState({ temp: '...', desc: 'загрузка...' });
+  const [rates, setRates] = useState({ usd: '...', rub: '...' });
+  const [news, setNews] = useState([
     { title: 'Загрузка свежих IT-новостей...', source: 'Dev.to', url: '#' }
   ]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // 1. Погода в Уральске (Open-Meteo API)
     fetch('https://api.open-meteo.com/v1/forecast?latitude=51.2333&longitude=51.3667&current=temperature_2m')
       .then(res => res.json())
@@ -55,9 +54,53 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
-  const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
+
+  const quotesList = [
+  "«Сначала напиши код, который работает. Затем сделай его красивым. И потом — быстрым».",
+  "«Простота — необходимое условие надежности». — Эдсгер Дейкстра",
+  "«Чистый код выглядит так, будто он был написан кем-то, кому не все равно».",
+  "«Ошибки в коде — это не провал, а шаг к пониманию того, как всё устроено».",
+  "«Лучший код — это тот, который не пришлось писать».",
+  "«Дисциплина — разница между тем, чего ты хочешь сейчас, и тем, чего хочешь больше всего».",
+  "«Seni jeńgen zat seni küştırek etedı (Что не убивает — делает сильнее)».",
+  "«Каждая написанная строка кода — это инвестиция в твои навыки».",
+  "«Сложность создаёт проблемы, простота создаёт решения».",
+  "«Не переживай, если что-то не работает. Если бы всё работало, у тебя не было бы работы».",
+  "«Маленькие ежедневные шаги дают огромный результат на дистанции».",
+  "«Концентрируйся на процессе, а результат подтянется сам»."
+];
+
+const [quoteIndex, setQuoteIndex] = useState(0);
+
+// Состояния для Дня рождения и обратного отсчета
+const [bdayName, setBdayName] = useLocalStorage('selfhq_bday_name', 'Мой День Рождения');
+const [bdayDate, setBdayDate] = useLocalStorage('selfhq_bday_date', '05-15');
+const [isEditingBday, setIsEditingBday] = useState(false);
+
+// Проверка: сегодня ли День Рождения?
+const today = new Date();
+const currentMMDD = String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+const isBdayToday = bdayDate === currentMMDD;
+
+// Функция расчета дней
+const getDaysLeft = (targetMMDD) => {
+  if (!targetMMDD || !targetMMDD.includes('-')) return 0;
+  const now = new Date();
+  const [month, day] = targetMMDD.split('-').map(Number);
+  let target = new Date(now.getFullYear(), month - 1, day);
+  if (target < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+    target = new Date(now.getFullYear() + 1, month - 1, day);
+  }
+  const diff = target - now;
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+};
+
+const daysToBday = getDaysLeft(bdayDate);
+const daysToSummer = getDaysLeft('06-01');
+
+const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   const [level, setLevel] = useLocalStorage('selfhq_level', 3);
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'skills' | 'diary'
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // 1. Ежедневные квесты
   const [quests, setQuests] = useLocalStorage('selfhq_quests', [
@@ -67,7 +110,7 @@ export default function App() {
     { id: 4, text: 'Протереть пыль в комнате', xp: 30, completed: false }
   ]);
 
-  // 2. Древо задач (с возможностью добавлять свои)
+  // 2. Древо задач
   const [skillTree, setSkillTree] = useLocalStorage('selfhq_skilltree', [
     {
       id: 'branch-1',
@@ -82,7 +125,7 @@ export default function App() {
   const [selectedBranchId, setSelectedBranchId] = useState('branch-1');
   const [newBranchName, setNewBranchName] = useState('');
 
-  // 3. Дневник (пустой, только ваши мысли)
+  // 3. Дневник
   const [diaryEntries, setDiaryEntries] = useLocalStorage('selfhq_diary', []);
   const [newDiaryText, setNewDiaryText] = useState('');
 
@@ -98,7 +141,7 @@ export default function App() {
     }
   };
 
-  // Добавление своей задачи в Древо
+  // Добавление задачи в Древо
   const addTaskToBranch = (branchId, e) => {
     e.preventDefault();
     if (!newTaskText.trim()) return;
@@ -154,34 +197,34 @@ export default function App() {
     setNewDiaryText('');
   };
 
-    return (
-      <div 
-        className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"
-        style={{
-          backgroundImage: `linear-gradient(rgba(2, 2, 2, 0.8), rgba(3, 3, 3, 0.85)), url('/bg.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
-          backgroundRepeat: 'no-repeat'
-        }}
-      >
-        
-        {/* Декоративный фон в стиле хаори Танджиро (клетка) */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
+  return (
+    <div 
+      className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"
+      style={{
+        backgroundImage: `linear-gradient(rgba(2, 2, 2, 0.8), rgba(3, 3, 3, 0.85)), url('${baseUrl}bg.jpg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      
+      {/* Декоративный фон в стиле хаори Танджиро (клетка) */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
 
-        {/* Шапка / Навигация */}
-        <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
-          <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-    <img 
-      src="/avatar.jpg" 
-      alt="Avatar" 
-      className="w-full h-full object-cover rounded-full border border-black"
-    />
-  </div>
-            <div>
+      {/* Шапка / Навигация */}
+      <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+            <img 
+              src={`${baseUrl}avatar.jpg`} 
+              alt="Avatar" 
+              className="w-full h-full object-cover rounded-full border border-black"
+            />
+          </div>
+          <div>
             <h1 className="font-extrabold tracking-wider text-xl bg-gradient-to-r from-red-500 via-orange-500 to-amber-300 bg-clip-text text-transparent">SelfHQ</h1>
-            <p className="text-xs text-white/80 font-mono tracking-widest uppercase">Путь </p>
+            <p className="text-xs text-white/80 font-mono tracking-widest uppercase">Путь гондона</p>
           </div>
         </div>
 
@@ -235,26 +278,33 @@ export default function App() {
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-500">
                   <Zap className="w-5 h-5 text-orange-500" /> Ежедневные испытания
                 </h2>
-                <div className="space-y-3">
-                  {quests.map(q => (
-                    <div key={q.id} className={`flex items-center justify-between p-3 rounded-xl border transition ${q.completed ? 'bg-red-950/20 border-white/20 opacity-50' : 'bg-black/50 border-white/20 hover:border-white/50'}`}>
-                      <span className={`text-sm ${q.completed ? 'line-through text-zinc-500' : 'text-red-100'}`}>{q.text}</span>
-                      {!q.completed ? (
-                        <button 
-                          onClick={() => completeQuest(q.id, q.xp)}
-                          className="text-xs bg-red-600/20 text-red-300 px-3 py-1.5 rounded-lg border border-white/40 hover:bg-red-600 hover:text-white transition flex items-center gap-1 cursor-pointer font-medium shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                        >
-                          +{q.xp} XP
-                        </button>
-                      ) : (
-                        <CheckCircle className="w-5 h-5 text-red-500" />
-                      )}
-                    </div>
-                  ))}
-                </div>
+
+                {isBdayToday ? (
+                  <div className="py-8 text-center bg-red-950/30 border border-amber-500/40 rounded-xl p-4">
+                    <p className="text-amber-400 font-bold text-base mb-1">🎉 Праздничный день!</p>
+                    <p className="text-xs text-red-200">Сегодня {bdayName}! Все ежедневные квесты отменены — отдыхай и наслаждайся моментом! 🍰</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {quests.map(q => (
+                      <div key={q.id} className={`flex items-center justify-between p-3 rounded-xl border transition ${q.completed ? 'bg-red-950/20 border-white/20 opacity-50' : 'bg-black/50 border-white/20 hover:border-white/50'}`}>
+                        <span className={`text-sm ${q.completed ? 'line-through text-zinc-500' : 'text-red-100'}`}>{q.text}</span>
+                        {!q.completed ? (
+                          <button 
+                            onClick={() => completeQuest(q.id, q.xp)}
+                            className="text-xs bg-red-600/20 text-red-300 px-3 py-1.5 rounded-lg border border-white/40 hover:bg-red-600 hover:text-white transition flex items-center gap-1 cursor-pointer font-medium shadow-[0_0_10px_rgba(239,68,68,0.3)]"
+                          >
+                            +{q.xp} XP
+                          </button>
+                        ) : (
+                          <CheckCircle className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-
             {/* Быстрые ссылки */}
             <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-5 rounded-2xl shadow-xl">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-500">
@@ -276,61 +326,120 @@ export default function App() {
               </div>
             </div>
 
-            {/* Блок qw: Живые данные погоды, валют и IT-новостей */}
-<div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-5 rounded-2xl shadow-xl flex flex-col gap-4 text-white w-full">
-  
-  {/* 1. Погода и Валюта */}
-  <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/10">
-    {/* Погода в Уральске */}
-    <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/10">
-      <span className="text-2xl">⛅</span>
-      <div>
-        <div className="text-xs text-zinc-400">Уральск</div>
-        <div className="text-sm font-bold">{weather.temp}°C, {weather.desc}</div>
-      </div>
-    </div>
+            {/* Блок qw: Живые данные погоды, валют и цитат */}
+            <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-5 rounded-2xl shadow-xl flex flex-col gap-4 text-white w-full">
+              
+              {/* 1. Погода и Валюта */}
+              <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/10">
+                {/* Погода в Уральске */}
+                <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/10">
+                  <span className="text-2xl">⛅</span>
+                  <div>
+                    <div className="text-xs text-zinc-400">Уральск</div>
+                    <div className="text-sm font-bold">{weather.temp}°C, {weather.desc}</div>
+                  </div>
+                </div>
 
-    {/* Курсы валют */}
-    <div className="flex flex-col justify-center bg-black/40 p-3 rounded-xl border border-white/10 text-xs">
-      <div className="flex justify-between">
-        <span className="text-zinc-400">USD/KZT:</span>
-        <span className="font-semibold">{rates.usd}</span>
-      </div>
-      <div className="flex justify-between mt-1">
-        <span className="text-zinc-400">RUB/KZT:</span>
-        <span className="font-semibold">{rates.rub}</span>
-      </div>
-    </div>
-  </div>
+                {/* Курсы валют */}
+                <div className="flex flex-col justify-center bg-black/40 p-3 rounded-xl border border-white/10 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">USD/KZT:</span>
+                    <span className="font-semibold">{rates.usd}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-zinc-400">RUB/KZT:</span>
+                    <span className="font-semibold">{rates.rub}</span>
+                  </div>
+                </div>
+              </div>
 
-  {/* 2. IT Новости */}
-  <div className="flex flex-col gap-2.5">
-    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-      💋 IT Сфера & Новости
-    </h3>
-    
-    <div className="space-y-2 text-xs">
-      {news.map((item, index) => (
-        <a 
-          key={index} 
-          href={item.url} 
-          target="_blank" 
-          rel="noreferrer"
-          className="block p-2.5 bg-black/40 rounded-xl border border-white/10 hover:border-white/30 transition cursor-pointer"
-        >
-          <span className="text-zinc-400 block text-[10px] mb-0.5">{item.source}</span>
-          <p className="font-medium text-white line-clamp-1">{item.title}</p>
-        </a>
-      ))}
-    </div>
-  </div>
+              {/* 2. Код & Мысль дня */}
+              <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  💡 Код & Мысль дня
+                </h3>
+                
+                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">Productivity Tip</span>
+                    <button 
+                      onClick={() => setQuoteIndex((prev) => (prev + 1) % quotesList.length)}
+                      className="text-[10px] bg-red-600/25 hover:bg-red-600 text-red-200 hover:text-white px-2 py-0.5 rounded border border-white/20 transition cursor-pointer font-mono"
+                    >
+                      Следующая ↻
+                    </button>
+                  </div>
+                  <p className="text-red-100 font-medium leading-relaxed italic min-h-[40px] flex items-center">
+                    {quotesList[quoteIndex]}
+                  </p>
+                </div>
+              </div>
 
-</div>
+              {/* 3. Обратный отсчет (ДР и Лето) */}
+              <div className="flex flex-col gap-2 mt-1">
+                {/* Виджет ДР */}
+                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">🎉 {bdayName}</span>
+                    <button 
+                      onClick={() => setIsEditingBday(!isEditingBday)}
+                      className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer"
+                    >
+                      {isEditingBday ? 'Сохранить' : 'Изменить'}
+                    </button>
+                  </div>
 
-          </div>
+                  {isEditingBday ? (
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <input 
+                        type="text" 
+                        value={bdayName} 
+                        onChange={(e) => setBdayName(e.target.value)}
+                        placeholder="Чье ДР (например, ДР Костяна)"
+                        className="bg-zinc-900 border border-white/20 rounded px-2 py-1 text-xs text-white"
+                      />
+                      <input 
+                        type="text" 
+                        value={bdayDate} 
+                        onChange={(e) => setBdayDate(e.target.value)}
+                        placeholder="Формат: ММ-ДД (например, 05-15)"
+                        className="bg-zinc-900 border border-white/20 rounded px-2 py-1 text-xs text-white font-mono"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      {isBdayToday ? (
+                        <div className="text-xs font-bold text-amber-400 animate-pulse mt-0.5">
+                          🎁 Сегодня праздничный день! Отдыхай! 🥳
+                        </div>
+                      ) : (
+                        <div className="text-xs font-medium text-red-100 mt-0.5">
+                          Осталось <span className="text-orange-400 font-bold">{daysToBday}</span> дней
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Виджет Лето */}
+                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">☀️ До лета (1 июня)</span>
+                    <div className="text-xs font-medium text-red-100 mt-0.5">
+                      Осталось <span className="text-amber-400 font-bold">{daysToSummer}</span> дней
+                    </div>
+                  </div>
+                  <span className="text-lg">🌴</span>
+                </div>
+              </div>
+
+            </div>
+            </div>
+
+          
         )}
 
-        {/* ВКЛАДКА 2: ДРЕВО (Свои задачи и ветки) */}
+        {/* ВКЛАДКА 2: ДРЕВО */}
         {activeTab === 'skills' && (
           <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-6 rounded-2xl shadow-xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-white/20">
@@ -341,7 +450,6 @@ export default function App() {
                 <p className="text-xs text-red-300/60 mt-1">Создавайте собственные ветки и записывайте задачи самостоятельно</p>
               </div>
 
-              {/* Форма добавления новой ветки */}
               <form onSubmit={addBranch} className="flex gap-2 w-full md:w-auto">
                 <input 
                   type="text"
@@ -356,7 +464,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Форма добавления задачи в выбранную ветку */}
             <div className="bg-black/50 p-4 rounded-xl border border-white/20 mb-6 flex flex-col md:flex-row gap-3 items-center">
               <select 
                 value={selectedBranchId}
@@ -384,7 +491,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Вывод веток и задач */}
             <div className="space-y-6">
               {skillTree.map((branch) => (
                 <div key={branch.id} className="p-5 bg-zinc-900/40 border border-white/20 rounded-xl relative group/branch transition-all duration-200 hover:bg-red-600 hover:border-red-600">
@@ -394,7 +500,6 @@ export default function App() {
                       {branch.branchName}
                     </h3>
                     
-                    {/* Кнопка удаления всей ветки */}
                     <button 
                       onClick={() => setSkillTree(skillTree.filter(b => b.id !== branch.id))}
                       className="text-white hover:text-white transition opacity-0 group-hover/branch:opacity-100 cursor-pointer p-1.5 flex items-center gap-1 text-xs bg-black/60 rounded-lg border border-white/40 hover:bg-black/80"
@@ -428,11 +533,10 @@ export default function App() {
           </div>
         )}
 
-        {/* ВКЛАДКА 3: ДНЕВНИК (Увеличенный, без лишнего текста) */}
+        {/* ВКЛАДКА 3: ДНЕВНИК */}
         {activeTab === 'diary' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Форма ввода записи */}
             <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-6 rounded-2xl shadow-xl h-fit">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-500">
                 <BookText className="w-6 h-6 text-orange-500" /> Новая запись
@@ -454,7 +558,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Список записей (сделан больше и просторнее) */}
             <div className="lg:col-span-2 bg-zinc-950/90 backdrop-blur-md border border-white/30 p-8 rounded-2xl shadow-xl min-h-[500px]">
               <h2 className="text-2xl font-bold mb-6 text-red-500 flex items-center gap-2">
                 <Sparkles className="w-6 h-6 text-orange-500" /> Личный архив мыслей
