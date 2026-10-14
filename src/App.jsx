@@ -116,6 +116,33 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  /* ---------- аватар и подпись (редактируются на сайте) ---------- */
+  const [avatar, setAvatar] = useLocalStorage('selfhq_avatar', '');
+  const [tagline, setTagline] = useLocalStorage('selfhq_tagline', 'Личный штаб');
+  const [editTag, setEditTag] = useState(false);
+
+  // Фото обрезается до квадрата 256×256 и сжимается, чтобы поместиться в localStorage
+  const onAvatar = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 256;
+      const side = Math.min(img.width, img.height);
+      c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 256, 256);
+      setAvatar(c.toDataURL('image/jpeg', 0.85));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      alert('Не удалось открыть картинку');
+    };
+    img.src = url;
+  };
+
   /* ---------- XP / уровень ---------- */
   const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   const [level, setLevel] = useLocalStorage('selfhq_level', 3);
@@ -390,12 +417,37 @@ export default function App() {
       {/* Шапка */}
       <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-4 md:mb-6 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-3 sm:p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 shrink-0 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-            <img src={`${baseUrl}avatar.jpg`} alt="Аватар" className="w-full h-full object-cover rounded-full border border-black" />
-          </div>
+          <label className="relative group w-12 h-12 shrink-0 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)] cursor-pointer" title="Сменить аватар">
+            <img src={avatar || `${baseUrl}avatar.jpg`} alt="Аватар" className="w-full h-full object-cover rounded-full border border-black" />
+            <span className="absolute inset-0 rounded-full bg-black/60 text-white text-sm grid place-items-center opacity-0 group-hover:opacity-100 transition">✎</span>
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] grid place-items-center border border-black md:hidden">✎</span>
+            <input type="file" accept="image/*" onChange={onAvatar} className="hidden" />
+          </label>
           <div>
             <h1 className="font-extrabold tracking-wider text-xl bg-gradient-to-r from-red-500 via-orange-500 to-amber-300 bg-clip-text text-transparent">SelfHQ</h1>
-            <p className="text-xs text-white/80 font-mono tracking-widest uppercase">Личный штаб</p>
+            {editTag ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!tagline.trim()) setTagline('Личный штаб');
+                  setEditTag(false);
+                }}
+                className="flex flex-col gap-1"
+              >
+                <div className="flex items-center gap-1.5">
+                  <input autoFocus value={tagline} maxLength={30} onChange={(e) => setTagline(e.target.value)} className="bg-black/70 border border-white/30 rounded px-2 py-1 text-base md:text-sm text-white w-44" />
+                  <button type="submit" className="text-xs px-2 py-1.5 rounded bg-red-600 text-white cursor-pointer">OK</button>
+                </div>
+                {avatar && (
+                  <button type="button" onClick={() => setAvatar('')} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Вернуть стандартную аву</button>
+                )}
+              </form>
+            ) : (
+              <button onClick={() => setEditTag(true)} className="group flex items-center gap-1.5 cursor-pointer text-left" title="Изменить подпись">
+                <span className="text-xs text-white/80 font-mono tracking-widest uppercase">{tagline || 'Личный штаб'}</span>
+                <span className="text-xs text-white/40 group-hover:text-white">✎</span>
+              </button>
+            )}
           </div>
         </div>
 
