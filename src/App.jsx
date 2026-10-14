@@ -114,7 +114,7 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   const [skillTree, setSkillTree] = useLocalStorage('selfhq_skilltree', [
     {
       id: 'branch-1',
-      branchName: 'Путь воина (Колледж и Учеба)',
+      branchName: '(Колледж и Учеба)',
       tasks: [
         { id: 't1', title: 'Сдать все задания в срок', status: 'in-progress', desc: 'Основная цель на эту неделю' }
       ]
@@ -128,7 +128,73 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   // 3. Дневник
   const [diaryEntries, setDiaryEntries] = useLocalStorage('selfhq_diary', []);
   const [newDiaryText, setNewDiaryText] = useState('');
+// 4. Финансы с выпадающей аналитикой
+  const [financeData, setFinanceData] = useLocalStorage('selfhq_finance', {
+    expenses: []
+  });
+  const [amount, setAmount] = useState('');
+  
+  const getTodayFormatted = () => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  };
+  const [selectedDate, setSelectedDate] = useState(getTodayFormatted());
+  
+  // Состояние для активного режима выписки ('none' | 'week' | 'month' | 'year' | 'day')
+  const [activeReport, setActiveReport] = useState('none');
 
+  const addMoney = (e) => {
+    e.preventDefault();
+    const val = parseFloat(amount);
+    if (isNaN(val)) return;
+
+    const newTransaction = {
+      id: Date.now(),
+      amount: val,
+      date: selectedDate
+    };
+
+    setFinanceData({
+      ...financeData,
+      expenses: [newTransaction, ...(financeData.expenses || [])]
+    });
+    setAmount('');
+  };
+
+  const deleteMoney = (id) => {
+    const newExpenses = (financeData.expenses || []).filter(item => item.id !== id);
+    setFinanceData({ ...financeData, expenses: newExpenses });
+  };
+
+  // Общий баланс
+  const allExpenses = financeData.expenses || [];
+  const total = allExpenses.reduce((acc, curr) => acc + (typeof curr === 'number' ? curr : curr.amount), 0);
+
+  // Расчеты для выписок
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const yearTotal = allExpenses
+    .filter(item => typeof item === 'object' && new Date(item.date).getFullYear() === currentYear)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const monthTotal = allExpenses
+    .filter(item => {
+      if (typeof item !== 'object') return false;
+      const d = new Date(item.date);
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    })
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(now.getDate() - 7);
+  const weekTotal = allExpenses
+    .filter(item => typeof item === 'object' && new Date(item.date) >= oneWeekAgo)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const filteredExpenses = allExpenses.filter(item => typeof item === 'object' && item.date === selectedDate);
+  const dayTotal = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   // Завершение квеста
   const completeQuest = (id, reward) => {
     setQuests(quests.map(q => q.id === id ? { ...q, completed: true } : q));
@@ -198,16 +264,19 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   };
 
   return (
-    <div 
-      className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"
-      style={{
-        backgroundImage: `linear-gradient(rgba(2, 2, 2, 0.8), rgba(3, 3, 3, 0.85)), url('${baseUrl}bg.jpg')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
+    <div        
+  className="min-h-screen text-red-50 p-6 font-sans relative overflow-x-hidden"       
+  style={{         
+    backgroundImage: `url('${baseUrl}bg.jpg')`, 
+    backgroundSize: 'contain', 
+    backgroundPosition: 'center', 
+    imageRendering: 'high-quality', 
+    backgroundAttachment: 'scroll', 
+    backgroundRepeat: 'no-repeat',
+    backgroundColor: '#020202' 
+  }}     
+>
+
       
       {/* Декоративный фон в стиле хаори Танджиро (клетка) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
@@ -248,7 +317,7 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
             onClick={() => setActiveTab('dashboard')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'text-red-300/70 hover:text-white'}`}
           >
-            Дашборд
+            dashboard
           </button>
           <button 
             onClick={() => setActiveTab('skills')}
@@ -261,6 +330,12 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
             className={`px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${activeTab === 'diary' ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'text-red-300/70 hover:text-white'}`}
           >
             Дневник
+          </button>
+          <button 
+            onClick={() => setActiveTab('finance')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${activeTab === 'finance' ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold shadow-[0_0_15px_rgba(239,68,68,0.6)]' : 'text-red-300/70 hover:text-white'}`}
+          >
+            Финансы
           </button>
         </div>
       </header>
@@ -305,24 +380,98 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
                 )}
               </div>
             </div>
-            {/* Быстрые ссылки */}
-            <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-5 rounded-2xl shadow-xl">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-500">
-                <BookOpen className="w-5 h-5 text-orange-500" /> Быстрые ссылки
-              </h2>
-              <div className="grid grid-cols-1 gap-3">
-                <a href="https://github.com" target="_blank" rel="noreferrer" className="p-3.5 bg-black/50 border border-white/20 rounded-xl text-sm font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group">
-                  <span className="text-red-200 group-hover:text-white font-semibold">GitHub</span>
-                  <ChevronRight className="w-4 h-4 text-red-600/50 group-hover:text-white" />
+           {/* Быстрые ссылки (Сетка в 2 колонки, выровненные по верху) */}
+            <div className="bg-zinc-950/90 backdrop-blur-md border border-white/30 p-5 rounded-2xl shadow-xl flex flex-col justify-start">
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
+                  <BookOpen className="w-5 h-5 text-orange-500" /> Быстрые ссылки
+                </h2>
+                <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Dev & Tools</span>
+              </div>
+
+              {/* Сетка в 2 колонки, закрепленная вверху с вертикальным скроллом */}
+              <div className="grid grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                
+                <a 
+                  href="https://github.com" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">GitHub</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
                 </a>
-                <a href="https://figma.com" target="_blank" rel="noreferrer" className="p-3.5 bg-black/50 border border-white/20 rounded-xl text-sm font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group">
-                  <span className="text-red-200 group-hover:text-white font-semibold">Figma</span>
-                  <ChevronRight className="w-4 h-4 text-red-600/50 group-hover:text-white" />
+
+                <a 
+                  href="https://figma.com" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">Figma</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
                 </a>
-                <a href="https://stitch.withgoogle.com" target="_blank" rel="noreferrer" className="p-3.5 bg-black/50 border border-white/20 rounded-xl text-sm font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group">
-                  <span className="text-red-200 group-hover:text-white font-semibold">Stitch</span>
-                  <ChevronRight className="w-4 h-4 text-red-600/50 group-hover:text-white" />
+
+                <a 
+                  href="https://stitch.withgoogle.com" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">Stitch</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
                 </a>
+
+                <a 
+                  href="https://akspic.ru/" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">akspic</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
+                </a>
+
+                <a 
+                  href="https://www.typingclub.com/" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">TypingClub</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
+                </a>
+
+                <a 
+                  href="https://onepiecedl.com/episode-36" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">Van-Pis</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
+                </a>
+
+                <a 
+                  href="https://tv.kinogo.mu/" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">kinogo</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
+                </a>
+
+                <a 
+                  href="https://www.youtube.com/" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs font-medium hover:border-red-500 hover:bg-red-600/10 transition flex items-center justify-between group shadow-sm hover:scale-[1.02]"
+                >
+                  <span className="text-red-200 group-hover:text-white font-semibold truncate">YouTube</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-red-600/50 group-hover:text-white" />
+                </a>
+
               </div>
             </div>
 
@@ -354,14 +503,10 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
               </div>
 
               {/* 2. Код & Мысль дня */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  💡 Код & Мысль дня
-                </h3>
-                
+              <div className="flex flex-col gap-2">  
                 <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">Productivity Tip</span>
+                    <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">Цитата Дня</span>
                     <button 
                       onClick={() => setQuoteIndex((prev) => (prev + 1) % quotesList.length)}
                       className="text-[10px] bg-red-600/25 hover:bg-red-600 text-red-200 hover:text-white px-2 py-0.5 rounded border border-white/20 transition cursor-pointer font-mono"
@@ -590,7 +735,135 @@ const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
 
           </div>
         )}
+{/* ВКЛАДКА 4: ФИНАНСЫ И МЕНЮ ВЫПИСОК */}
+        {activeTab === 'finance' && (
+          <div className="max-w-xl mx-auto bg-zinc-950/90 backdrop-blur-md border border-white/30 p-8 rounded-2xl shadow-xl flex flex-col gap-6">
+            <h2 className="text-2xl font-bold text-red-500 flex items-center gap-2">
+              💳 Финансы
+            </h2>
 
+            {/* Главный блок: Чистый общий баланс */}
+            <div className="p-6 bg-black/70 border border-white/20 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+              <span className="text-xs text-zinc-400 uppercase font-mono tracking-wider mb-1">Общий баланс</span>
+              <span className={`text-3xl font-extrabold font-mono ${total >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {total > 0 ? `+${total}` : total} ₸
+              </span>
+            </div>
+
+            {/* Кнопки меню для просмотра выписок */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-zinc-400 font-mono uppercase">Выписки и аналитика:</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button 
+                  onClick={() => setActiveReport(activeReport === 'week' ? 'none' : 'week')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === 'week' ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}
+                >
+                  За неделю
+                </button>
+                <button 
+                  onClick={() => setActiveReport(activeReport === 'month' ? 'none' : 'month')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === 'month' ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}
+                >
+                  За месяц
+                </button>
+                <button 
+                  onClick={() => setActiveReport(activeReport === 'year' ? 'none' : 'year')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === 'year' ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}
+                >
+                  За год
+                </button>
+                <button 
+                  onClick={() => setActiveReport(activeReport === 'day' ? 'none' : 'day')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === 'day' ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}
+                >
+                  По дням
+                </button>
+              </div>
+
+              {/* Выпадающий блок с результатами выбранной выписки */}
+              {activeReport !== 'none' && (
+                <div className="p-4 bg-black/80 border border-red-500/40 rounded-xl mt-2 flex justify-between items-center animate-fadeIn">
+                  <span className="text-xs text-zinc-300 font-mono">
+                    {activeReport === 'week' && 'Трата/доход за последние 7 дней:'}
+                    {activeReport === 'month' && 'Трата/доход за текущий месяц:'}
+                    {activeReport === 'year' && 'Трата/доход за текущий год:'}
+                    {activeReport === 'day' && `Баланс за ${selectedDate}:`}
+                  </span>
+                  <span className={`text-sm font-bold font-mono ${
+                    (activeReport === 'week' ? weekTotal : activeReport === 'month' ? monthTotal : activeReport === 'year' ? yearTotal : dayTotal) >= 0 
+                    ? 'text-emerald-400' : 'text-red-400'
+                  }`}>
+                    {(activeReport === 'week' ? weekTotal : activeReport === 'month' ? monthTotal : activeReport === 'year' ? yearTotal : dayTotal) > 0 ? '+' : ''}
+                    {activeReport === 'week' ? weekTotal : activeReport === 'month' ? monthTotal : activeReport === 'year' ? yearTotal : dayTotal} ₸
+                  </span>
+                </div>
+              )}
+
+              {/* Если выбран режим «По дням», показываем календарь */}
+              {activeReport === 'day' && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-black/80 border border-white/30 rounded-xl px-4 py-2 text-xs text-red-100 focus:outline-none focus:border-red-500 font-mono cursor-pointer"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Форма добавления транзакции */}
+            <form onSubmit={addMoney} className="flex gap-2 mt-2">
+              <input 
+                type="number" 
+                value={amount} 
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Сумма (например, 2000 или -500)"
+                className="flex-1 bg-black/80 border border-white/30 rounded-xl px-4 py-2.5 text-sm text-red-100 placeholder-zinc-600 focus:outline-none focus:border-red-500 font-mono"
+              />
+              <button 
+                type="submit"
+                className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-xl text-sm hover:opacity-90 transition cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+              >
+                + Записать
+              </button>
+            </form>
+
+            {/* Общая история всех транзакций */}
+            <div className="flex flex-col gap-2.5 max-h-[240px] overflow-y-auto pr-1">
+              <div className="text-xs text-orange-400 font-mono uppercase tracking-wider mb-1">
+                Все операции:
+              </div>
+              
+              {allExpenses.length === 0 ? (
+                <p className="text-xs text-zinc-500 italic text-center py-4">История транзакций пуста.</p>
+              ) : (
+                allExpenses.map((item) => {
+                  const itemAmount = typeof item === 'object' ? item.amount : item;
+                  const itemDate = typeof item === 'object' ? item.date : 'Без даты';
+                  const itemId = typeof item === 'object' ? item.id : item;
+                  return (
+                    <div key={itemId} className="p-3 bg-black/50 border border-white/20 rounded-xl flex justify-between items-center">
+                      <div className="flex flex-col">
+                        <span className={`font-mono font-semibold text-sm ${itemAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {itemAmount > 0 ? `+${itemAmount}` : itemAmount} ₸
+                        </span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{itemDate}</span>
+                      </div>
+                      <button 
+                        onClick={() => deleteMoney(itemId)}
+                        className="text-zinc-500 hover:text-red-500 transition cursor-pointer p-1"
+                        title="Удалить"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
