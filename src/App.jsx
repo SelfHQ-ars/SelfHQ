@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, CheckCircle, Zap, BookOpen, Flame, BookText, Trash2, ChevronRight, Sparkles, LayoutDashboard, Wallet } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import ProfileHeader from './ProfileHeader';
+import AuthGate, { getSessionNick, logout } from './AuthGate';
 
 /* ---------- константы и хелперы ---------- */
 const XP_PER_LEVEL = 500;
+// Ключи, которые не должны попадать в резервную копию (пароли и сессия)
+const PRIVATE_KEYS = ['selfhq_accounts', 'selfhq_session'];
 
 const QUOTES = [
   '«Сначала напиши код, который работает. Затем сделай его красивым. И потом — быстрым».',
@@ -70,7 +74,7 @@ const getDaysLeft = (mmdd) => {
 };
 
 const weatherText = (c) =>
-  c === 0 ? 'ясно' : c <= 3 ? 'облачно' : c <= 48 ? 'туман' : c <= 67 ? 'дождь' : c <= 77 ? 'снег' : c <= 82 ? 'ливни' : 'гроза';
+  c === 0 ? 'ясно' : c <= 3 ? 'облачно' : c <= 48 ? 'туман' : c <= 67 ? 'дождь' : c <= 77 ? 'снег' : c <= 82 ? 'ливни' : c <= 86 ? 'снегопад' : 'гроза';
 
 const sum = (arr) => Math.round(arr.reduce((a, c) => a + c.amount, 0) * 100) / 100;
 const fmt = (n) => `${n > 0 ? '+' : ''}${n} ₸`;
@@ -82,7 +86,16 @@ const grad = 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold';
 // На тач-экранах нет hover — кнопки удаления всегда видны, на десктопе появляются при наведении
 const hoverShow = 'md:opacity-0 md:group-hover:opacity-100';
 
+// Вход по нику и паролю оборачивает всё приложение
 export default function App() {
+  return (
+    <AuthGate>
+      <AppInner />
+    </AuthGate>
+  );
+}
+
+function AppInner() {
   const baseUrl = import.meta.env.BASE_URL || '/';
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -116,10 +129,10 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  /* ---------- аватар и подпись (редактируются на сайте) ---------- */
+  /* ---------- аватар, баннер и подпись (редактируются на сайте) ---------- */
   const [avatar, setAvatar] = useLocalStorage('selfhq_avatar', '');
+  const [banner, setBanner] = useLocalStorage('selfhq_banner', '');
   const [tagline, setTagline] = useLocalStorage('selfhq_tagline', 'Личный штаб');
-  const [editTag, setEditTag] = useState(false);
 
   // Фото обрезается до квадрата 256×256 и сжимается, чтобы поместиться в localStorage
   const onAvatar = (e) => {
@@ -229,7 +242,9 @@ export default function App() {
   const [notes, setNotes] = useLocalStorage('selfhq_notes', '');
   const exportData = () => {
     const data = {};
-    Object.keys(localStorage).filter((k) => k.startsWith('selfhq_')).forEach((k) => (data[k] = localStorage.getItem(k)));
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('selfhq_') && !PRIVATE_KEYS.includes(k))
+      .forEach((k) => (data[k] = localStorage.getItem(k)));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     a.download = `selfhq-backup-${localISO()}.json`;
@@ -238,11 +253,14 @@ export default function App() {
   };
   const importData = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !window.confirm('Заменить текущие данные данными из файла?')) return;
     const r = new FileReader();
     r.onload = () => {
       try {
-        Object.entries(JSON.parse(r.result)).forEach(([k, v]) => k.startsWith('selfhq_') && typeof v === 'string' && localStorage.setItem(k, v));
+        Object.entries(JSON.parse(r.result)).forEach(
+          ([k, v]) => k.startsWith('selfhq_') && !PRIVATE_KEYS.includes(k) && typeof v === 'string' && localStorage.setItem(k, v)
+        );
         window.location.reload();
       } catch {
         alert('Не удалось прочитать файл');
@@ -327,6 +345,7 @@ export default function App() {
   const [financeData, setFinanceData] = useLocalStorage('selfhq_finance', { expenses: [] });
   const [amount, setAmount] = useState('');
   const [kind, setKind] = useState('expense'); // на iOS в поле number нет минуса — выбираем тип кнопкой
+  const [category, setCategory] = useState('Еда');
   const [selectedDate, setSelectedDate] = useState(localISO());
   const [activeReport, setActiveReport] = useState('none');
 
@@ -378,8 +397,7 @@ export default function App() {
   };
   const reportButtons = [['week', 'За неделю'], ['month', 'За месяц'], ['year', 'За год'], ['day', 'По дням']];
 
-  /* ---------- категории, лимит, копилка ---------- */
-  const [category, setCategory] = useState('Еда');
+  /* ---------- лимит, копилка ---------- */
   const [limit, setLimit] = useLocalStorage('selfhq_limit', 0);
   const [piggy, setPiggy] = useLocalStorage('selfhq_piggy', { goalName: '', goal: 0, items: [] });
   const [piggyAmount, setPiggyAmount] = useState('');
@@ -414,56 +432,22 @@ export default function App() {
       />
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
-      {/* Шапка */}
-      <header className="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-4 md:mb-6 bg-zinc-950/80 backdrop-blur-md border-2 border-white/40 p-3 sm:p-4 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)]">
-        <div className="flex items-center gap-3">
-          <label className="relative group w-12 h-12 shrink-0 rounded-full p-0.5 bg-gradient-to-tr from-white via-zinc-300 to-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.4)] cursor-pointer" title="Сменить аватар">
-            <img src={avatar || `${baseUrl}avatar.jpg`} alt="Аватар" className="w-full h-full object-cover rounded-full border border-black" />
-            <span className="absolute inset-0 rounded-full bg-black/60 text-white text-sm grid place-items-center opacity-0 group-hover:opacity-100 transition">✎</span>
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] grid place-items-center border border-black md:hidden">✎</span>
-            <input type="file" accept="image/*" onChange={onAvatar} className="hidden" />
-          </label>
-          <div>
-            <h1 className="font-extrabold tracking-wider text-xl bg-gradient-to-r from-red-500 via-orange-500 to-amber-300 bg-clip-text text-transparent">SelfHQ</h1>
-            {editTag ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!tagline.trim()) setTagline('Личный штаб');
-                  setEditTag(false);
-                }}
-                className="flex flex-col gap-1"
-              >
-                <div className="flex items-center gap-1.5">
-                  <input autoFocus value={tagline} maxLength={30} onChange={(e) => setTagline(e.target.value)} className="bg-black/70 border border-white/30 rounded px-2 py-1 text-base md:text-sm text-white w-44" />
-                  <button type="submit" className="text-xs px-2 py-1.5 rounded bg-red-600 text-white cursor-pointer">OK</button>
-                </div>
-                {avatar && (
-                  <button type="button" onClick={() => setAvatar('')} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Вернуть стандартную аву</button>
-                )}
-              </form>
-            ) : (
-              <button onClick={() => setEditTag(true)} className="group flex items-center gap-1.5 cursor-pointer text-left" title="Изменить подпись">
-                <span className="text-xs text-white/80 font-mono tracking-widest uppercase">{tagline || 'Личный штаб'}</span>
-                <span className="text-xs text-white/40 group-hover:text-white">✎</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-black/70 px-3 py-2 rounded-xl border border-white/30 shadow-inner">
-          <div className="flex items-center gap-1.5 text-white font-semibold text-sm whitespace-nowrap">
-            <Trophy className="w-4 h-4 text-orange-500" /> Ранг {level}
-          </div>
-          <div className="flex-1 md:w-32 md:flex-none bg-zinc-900 h-2.5 rounded-full overflow-hidden border border-white/30">
-            <div
-              className="bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 h-full transition-all duration-500"
-              style={{ width: `${(xp / XP_PER_LEVEL) * 100}%` }}
-            />
-          </div>
-          <span className="text-xs text-orange-300 font-mono whitespace-nowrap">{xp}/{XP_PER_LEVEL} XP</span>
-        </div>
-      </header>
+      {/* Шапка профиля с баннером */}
+      <ProfileHeader
+        nick={getSessionNick()}
+        tagline={tagline}
+        setTagline={setTagline}
+        avatar={avatar}
+        setAvatar={setAvatar}
+        onAvatar={onAvatar}
+        defaultAvatar={`${baseUrl}avatar.jpg`}
+        banner={banner}
+        setBanner={setBanner}
+        level={level}
+        xp={xp}
+        xpMax={XP_PER_LEVEL}
+        onLogout={logout}
+      />
 
       {/* Навигация: снизу на телефоне (под большой палец), под шапкой на десктопе.
           Вынесена из header, т.к. backdrop-blur ломает position:fixed у потомков */}
@@ -709,9 +693,9 @@ export default function App() {
 
                 {skillTree.map((b, i) => [b, i]).reverse().map(([branch, i]) => {
                   const right = i % 2 === 0;
-                  const total = branch.tasks.length;
+                  const count = branch.tasks.length;
                   const done = branch.tasks.filter((t) => t.done).length;
-                  const full = total > 0 && done === total;
+                  const full = count > 0 && done === count;
                   return (
                     <div key={branch.id} className={`relative pl-10 md:w-1/2 ${right ? 'md:ml-auto' : 'md:pl-0 md:pr-10'}`}>
                       <span className={`absolute top-8 h-0.5 bg-gradient-to-r from-orange-500 to-red-700 shadow-[0_0_8px_rgba(251,146,60,.8)] left-4 w-6 ${right ? 'md:left-0 md:w-10' : 'md:left-auto md:right-0 md:w-10'}`} />
@@ -726,18 +710,18 @@ export default function App() {
                             <Trash2 className="w-4 h-4" /> Удалить ветку
                           </button>
                         </div>
-                        {total > 0 && (
+                        {count > 0 && (
                           <div className="flex items-center gap-2 mb-3">
                             <div className="flex-1 flex gap-0.5">
                               {branch.tasks.map((t) => (
                                 <span key={t.id} className={`flex-1 h-1.5 rounded-sm ${t.done ? 'bg-gradient-to-r from-orange-500 to-amber-300 shadow-[0_0_6px_rgba(251,146,60,.8)]' : 'bg-white/10'}`} />
                               ))}
                             </div>
-                            <span className="text-[11px] font-mono text-amber-200/80">{done}/{total}</span>
+                            <span className="text-[11px] font-mono text-amber-200/80">{done}/{count}</span>
                           </div>
                         )}
                         <div className="flex flex-col gap-2">
-                          {total === 0 && <p className="text-xs text-white/60 italic">Навыков нет — добавь задачу выше.</p>}
+                          {count === 0 && <p className="text-xs text-white/60 italic">Навыков нет — добавь задачу выше.</p>}
                           {branch.tasks.map((task) => (
                             <div key={task.id} className={`flex items-center gap-2 rounded-md border pr-1 ${task.done ? 'bg-amber-950/40 border-amber-500/50' : 'bg-black/50 border-white/15'}`}>
                               <button onClick={() => toggleTask(branch.id, task.id)} aria-pressed={!!task.done} className="flex-1 min-w-0 flex items-center gap-2.5 p-2 text-left cursor-pointer">
@@ -804,6 +788,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-4 sm:space-y-6">
+                  {shownEntries.length === 0 && <p className="text-sm text-zinc-500 italic text-center py-6">Ничего не найдено.</p>}
                   {shownEntries.map((entry) => (
                     <div key={entry.id} className="p-4 sm:p-6 bg-black/60 border border-white/30 rounded-2xl relative group hover:border-red-500 transition shadow-lg">
                       <span className="text-xs text-orange-400 font-mono mb-2 block pr-10">{entry.date}</span>
