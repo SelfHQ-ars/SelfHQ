@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, CheckCircle, Zap, BookOpen, Flame, BookText, Trash2, ChevronRight, Sparkles, LayoutDashboard, Wallet } from 'lucide-react';
+import { Trophy, CheckCircle, Zap, BookOpen, Flame, BookText, Trash2, ChevronRight, Sparkles, LayoutDashboard, Wallet, ImagePlus, X } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ProfileHeader from './ProfileHeader';
 import AuthGate, { getSessionNick, logout } from './AuthGate';
@@ -79,6 +79,27 @@ const weatherText = (c) =>
 const sum = (arr) => Math.round(arr.reduce((a, c) => a + c.amount, 0) * 100) / 100;
 const fmt = (n) => `${n > 0 ? '+' : ''}${n} ₸`;
 
+// Фото для дневника: вписываем в max×max и сжимаем, чтобы влезло в localStorage
+const fitToDataUrl = (file, max = 900, q = 0.72) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('load'));
+    };
+    img.src = url;
+  });
+
 // text-base на мобильных: при шрифте < 16px iOS зумит страницу при фокусе на поле
 const card = 'bg-zinc-950/90 backdrop-blur-md border border-white/30 rounded-2xl shadow-xl';
 const input = 'bg-black/70 border border-white/30 rounded-xl px-3 py-2.5 text-base md:text-sm text-red-100 placeholder-zinc-600 focus:outline-none focus:border-red-500';
@@ -97,7 +118,37 @@ export default function App() {
 
 function AppInner() {
   const baseUrl = import.meta.env.BASE_URL || '/';
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const TAB_IDS = TABS.map((t) => t[0]);
+  // #diary / #finance — открывается из быстрых действий иконки на домашнем экране
+  const [activeTab, setActiveTab] = useState(() => {
+    const h = window.location.hash.slice(1);
+    return TAB_IDS.includes(h) ? h : 'dashboard';
+  });
+  const [lightbox, setLightbox] = useState(null);
+
+  // PWA: манифест + service worker (оффлайн-режим)
+  useEffect(() => {
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = `${baseUrl}manifest.webmanifest`;
+      document.head.appendChild(link);
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register(`${baseUrl}sw.js`).catch(() => {});
+  }, [baseUrl]);
+
+  // Горячие клавиши: 1–4 — вкладки, Esc — закрыть фото. В полях ввода не срабатывают
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightbox(null);
+      const t = e.target;
+      if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) return;
+      const n = Number(e.key);
+      if (n >= 1 && n <= TAB_IDS.length) setActiveTab(TAB_IDS[n - 1]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- живые данные ---------- */
   const [weather, setWeather] = useState({ temp: '—', desc: 'загрузка' });
@@ -333,12 +384,31 @@ function AppInner() {
   const [diarySearch, setDiarySearch] = useState('');
   const shownEntries = diaryEntries.filter((e) => e.text.toLowerCase().includes(diarySearch.trim().toLowerCase()));
 
+  const [newDiaryImgs, setNewDiaryImgs] = useState([]);
+  const addDiaryFiles = async (files) => {
+    const imgs = [];
+    for (const f of Array.from(files || [])) {
+      if (!f.type.startsWith('image/')) continue;
+      try {
+        imgs.push(await fitToDataUrl(f));
+      } catch {
+        /* битый файл пропускаем */
+      }
+    }
+    if (imgs.length) setNewDiaryImgs((p) => [...p, ...imgs].slice(0, 6));
+  };
+
   const addDiaryEntry = (e) => {
     e.preventDefault();
-    if (!newDiaryText.trim()) return;
+    if (!newDiaryText.trim() && !newDiaryImgs.length) return;
     const date = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    setDiaryEntries([{ id: Date.now(), date, text: newDiaryText }, ...diaryEntries]);
-    setNewDiaryText('');
+    try {
+      setDiaryEntries([{ id: Date.now(), date, text: newDiaryText, images: newDiaryImgs }, ...diaryEntries]);
+      setNewDiaryText('');
+      setNewDiaryImgs([]);
+    } catch {
+      alert('Не хватает места в браузере: сделай резервную копию и удали старые фото');
+    }
   };
 
   /* ---------- финансы ---------- */
@@ -378,16 +448,33 @@ function AppInner() {
   const all = (financeData.expenses || []).filter((i) => typeof i === 'object');
   const nowD = new Date();
   const weekAgo = new Date();
-  weekAgo.setDate(nowD.getDate() - 7);
+  weekAgo.setDate(nowD.getDate() - 6); // сегодня + 6 предыдущих = ровно 7 дней
   const ym = localISO(nowD).slice(0, 7);
   const y = localISO(nowD).slice(0, 4);
 
   const total = sum(all);
-  const totals = {
-    week: sum(all.filter((i) => i.date && i.date >= localISO(weekAgo))),
-    month: sum(all.filter((i) => i.date && i.date.startsWith(ym))),
-    year: sum(all.filter((i) => i.date && i.date.startsWith(y))),
-    day: sum(all.filter((i) => i.date === selectedDate))
+  const periodItems = {
+    week: all.filter((i) => i.date && i.date >= localISO(weekAgo)),
+    month: all.filter((i) => i.date && i.date.startsWith(ym)),
+    year: all.filter((i) => i.date && i.date.startsWith(y)),
+    day: all.filter((i) => i.date === selectedDate)
+  };
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const stat = (list) => ({
+    income: sum(list.filter((i) => i.amount > 0)),
+    expense: Math.abs(sum(list.filter((i) => i.amount < 0))),
+    net: sum(list)
+  });
+  const totals = Object.fromEntries(Object.entries(periodItems).map(([k, v]) => [k, stat(v)]));
+  // Разбивка периода по дням (новые сверху)
+  const byDay = (list) => {
+    const m = {};
+    list.forEach((i) => {
+      const d = m[i.date] || (m[i.date] = { date: i.date, income: 0, expense: 0 });
+      if (i.amount > 0) d.income += i.amount;
+      else d.expense -= i.amount;
+    });
+    return Object.values(m).sort((a, b) => b.date.localeCompare(a.date));
   };
   const reportLabels = {
     week: 'За последние 7 дней:',
@@ -767,8 +854,28 @@ function AppInner() {
                   onChange={(e) => setNewDiaryText(e.target.value)}
                   placeholder="Мысли, итоги дня, планы..."
                   rows={6}
+                  onPaste={(e) => {
+                    const fs = [...e.clipboardData.files].filter((f) => f.type.startsWith('image/'));
+                    if (fs.length) {
+                      e.preventDefault();
+                      addDiaryFiles(fs);
+                    }
+                  }}
                   className={`${input} w-full p-4 resize-none`}
                 />
+                <div className="flex flex-wrap gap-2 items-center">
+                  <label className="flex items-center gap-1.5 text-xs text-red-200 bg-black/60 border border-white/30 hover:border-white/60 rounded-lg px-3 py-2 cursor-pointer">
+                    <ImagePlus className="w-4 h-4" /> Фото
+                    <input type="file" accept="image/*" multiple onChange={(e) => { addDiaryFiles(e.target.files); e.target.value = ''; }} className="hidden" />
+                  </label>
+                  {newDiaryImgs.map((src, i) => (
+                    <div key={i} className="relative w-14 h-14">
+                      <img src={src} alt="" className="w-full h-full object-cover rounded-lg border border-white/30" />
+                      <button type="button" onClick={() => setNewDiaryImgs(newDiaryImgs.filter((_, j) => j !== i))} className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-red-600 text-white cursor-pointer" aria-label="Убрать фото"><X className="w-3 h-3" /></button>
+                    </div>
+                  ))}
+                  <span className="text-[11px] text-zinc-500 w-full">Скриншот можно вставить через Ctrl+V прямо в поле. До 6 фото.</span>
+                </div>
                 <button type="submit" className={`w-full py-3 ${grad} rounded-xl text-sm hover:opacity-90 transition cursor-pointer`}>Сохранить запись</button>
               </form>
             </div>
@@ -792,7 +899,16 @@ function AppInner() {
                   {shownEntries.map((entry) => (
                     <div key={entry.id} className="p-4 sm:p-6 bg-black/60 border border-white/30 rounded-2xl relative group hover:border-red-500 transition shadow-lg">
                       <span className="text-xs text-orange-400 font-mono mb-2 block pr-10">{entry.date}</span>
-                      <p className="text-base text-red-50 whitespace-pre-wrap break-words leading-relaxed">{entry.text}</p>
+                      {entry.text && <p className="text-base text-red-50 whitespace-pre-wrap break-words leading-relaxed">{entry.text}</p>}
+                      {entry.images?.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                          {entry.images.map((src, i) => (
+                            <button key={i} type="button" onClick={() => setLightbox(src)} className="cursor-zoom-in">
+                              <img src={src} alt="Фото к записи" className="w-full h-28 sm:h-32 object-cover rounded-lg border border-white/20 hover:border-red-500 transition" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <button
                         onClick={() => window.confirm('Удалить запись?') && setDiaryEntries(diaryEntries.filter((i) => i.id !== entry.id))}
                         className={`${hoverShow} absolute top-3 right-3 p-2 text-zinc-500 hover:text-red-500 transition cursor-pointer`}
@@ -893,9 +1009,26 @@ function AppInner() {
               </div>
 
               {activeReport !== 'none' && (
-                <div className="p-4 bg-black/80 border border-red-500/40 rounded-xl flex justify-between items-center gap-3">
-                  <span className="text-xs text-zinc-300 font-mono">{reportLabels[activeReport]}</span>
-                  <span className={`text-sm font-bold font-mono whitespace-nowrap ${totals[activeReport] >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(totals[activeReport])}</span>
+                <div className="p-4 bg-black/80 border border-red-500/40 rounded-xl flex flex-col gap-2 font-mono">
+                  <span className="text-xs text-zinc-300">{reportLabels[activeReport]}</span>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-400">Поднял (доход)</span><span className="text-emerald-400 font-bold">+{totals[activeReport].income} ₸</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-400">Потратил</span><span className="text-red-400 font-bold">−{totals[activeReport].expense} ₸</span></div>
+                  <div className="flex justify-between text-sm pt-2 border-t border-white/10">
+                    <span className="text-zinc-300">Итого</span>
+                    <span className={`font-bold ${totals[activeReport].net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(totals[activeReport].net)}</span>
+                  </div>
+                  {activeReport !== 'day' && periodItems[activeReport].length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+                      <span className="text-[10px] text-orange-400 uppercase tracking-wider">По дням</span>
+                      {byDay(periodItems[activeReport]).map((d) => (
+                        <div key={d.date} className="flex justify-between gap-2 text-[11px]">
+                          <span className="text-zinc-400">{d.date}</span>
+                          <span className="text-emerald-400">{d.income ? `+${r2(d.income)}` : '·'}</span>
+                          <span className="text-red-400">{d.expense ? `−${r2(d.expense)}` : '·'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {activeReport === 'day' && (
@@ -949,6 +1082,12 @@ function AppInner() {
           </div>
         )}
       </main>
+
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/90 grid place-items-center p-4 cursor-zoom-out" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Фото" className="max-w-full max-h-full rounded-xl border border-white/30 shadow-[0_0_30px_rgba(220,38,38,0.35)]" />
+        </div>
+      )}
     </div>
   );
 }
