@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, CheckCircle, Zap, BookOpen, Flame, BookText, Trash2, ChevronRight, Sparkles, LayoutDashboard, Wallet, ImagePlus, X } from 'lucide-react';
+import { BookOpen, BookText, Trash2, ChevronRight, Sparkles, Wallet, ImagePlus, X, StickyNote, Eye, EyeOff } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ProfileHeader from './ProfileHeader';
 import AuthGate, { getSessionNick, logout } from './AuthGate';
@@ -9,39 +9,15 @@ const XP_PER_LEVEL = 500;
 // Ключи, которые не должны попадать в резервную копию (пароли и сессия)
 const PRIVATE_KEYS = ['selfhq_accounts', 'selfhq_session'];
 
-const QUOTES = [
-  '«Сначала напиши код, который работает. Затем сделай его красивым. И потом — быстрым».',
-  '«Простота — необходимое условие надежности». — Эдсгер Дейкстра',
-  '«Чистый код выглядит так, будто он был написан кем-то, кому не все равно».',
-  '«Ошибки в коде — это не провал, а шаг к пониманию того, как всё устроено».',
-  '«Лучший код — это тот, который не пришлось писать».',
-  '«Дисциплина — разница между тем, чего ты хочешь сейчас, и тем, чего хочешь больше всего».',
-  '«Seni jeńgen zat seni küştırek etedı (Что не убивает — делает сильнее)».',
-  '«Каждая написанная строка кода — это инвестиция в твои навыки».',
-  '«Сложность создаёт проблемы, простота создаёт решения».',
-  '«Не переживай, если что-то не работает. Если бы всё работало, у тебя не было бы работы».',
-  '«Маленькие ежедневные шаги дают огромный результат на дистанции».',
-  '«Концентрируйся на процессе, а результат подтянется сам».'
-];
-
 const LINKS = [
   ['GitHub', 'https://github.com'],
   ['Figma', 'https://figma.com'],
   ['Stitch', 'https://stitch.withgoogle.com'],
   ['akspic', 'https://akspic.ru/'],
   ['TypingClub', 'https://www.typingclub.com/'],
-  ['Van-Pis', 'https://onepiecedl.com/episode-36'],
+  ['Whatsapp', 'https://web.whatsapp.com/'],
   ['kinogo', 'https://tv.kinogo.mu/'],
   ['YouTube', 'https://www.youtube.com/']
-];
-
-const DEFAULT_QUESTS = [
-  { id: 1, text: 'Успеть вовремя в колледж (не опоздать)', xp: 50 },
-  { id: 2, text: 'Полноценная тренировка', xp: 70 },
-  { id: 3, text: 'Убраться в комнате', xp: 40 },
-  { id: 4, text: 'Протереть пыль в комнате', xp: 30 },
-  { id: 5, text: 'Час практики кода', xp: 60 },
-  { id: 6, text: 'Выучить 10 английских слов', xp: 30 }
 ];
 
 const CATEGORIES = [
@@ -53,8 +29,7 @@ const CATEGORIES = [
 ];
 
 const TABS = [
-  ['dashboard', 'Дашборд', LayoutDashboard],
-  ['skills', 'Древо', Flame],
+  ['notes', 'Заметки', StickyNote],
   ['diary', 'Дневник', BookText],
   ['finance', 'Финансы', Wallet]
 ];
@@ -62,19 +37,6 @@ const TABS = [
 const pad = (n) => String(n).padStart(2, '0');
 // Локальная дата (а не UTC, как у toISOString) — иначе ночью в Казахстане дата «вчера»
 const localISO = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-const getDaysLeft = (mmdd) => {
-  if (!/^\d{2}-\d{2}$/.test(mmdd || '')) return 0;
-  const today = startOfDay(new Date());
-  const [m, d] = mmdd.split('-').map(Number);
-  let target = new Date(today.getFullYear(), m - 1, d);
-  if (target < today) target = new Date(today.getFullYear() + 1, m - 1, d);
-  return Math.round((target - today) / 86400000);
-};
-
-const weatherText = (c) =>
-  c === 0 ? 'ясно' : c <= 3 ? 'облачно' : c <= 48 ? 'туман' : c <= 67 ? 'дождь' : c <= 77 ? 'снег' : c <= 82 ? 'ливни' : c <= 86 ? 'снегопад' : 'гроза';
 
 const sum = (arr) => Math.round(arr.reduce((a, c) => a + c.amount, 0) * 100) / 100;
 const fmt = (n) => `${n > 0 ? '+' : ''}${n} ₸`;
@@ -107,22 +69,43 @@ const grad = 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold';
 // На тач-экранах нет hover — кнопки удаления всегда видны, на десктопе появляются при наведении
 const hoverShow = 'md:opacity-0 md:group-hover:opacity-100';
 
+class ErrorBoundary extends React.Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="min-h-[100dvh] grid place-items-center p-4 bg-[#020202] text-red-50">
+        <div className="max-w-md bg-zinc-950 border border-red-500/50 rounded-2xl p-5 text-sm">
+          <p className="font-bold text-red-400 mb-2">Что-то пошло не так</p>
+          <pre className="whitespace-pre-wrap break-words text-xs text-zinc-300">{String(this.state.error?.message || this.state.error)}</pre>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-xl bg-red-600 text-white cursor-pointer">Перезагрузить</button>
+        </div>
+      </div>
+    );
+  }
+}
+
 // Вход по нику и паролю оборачивает всё приложение
 export default function App() {
   return (
-    <AuthGate>
-      <AppInner />
-    </AuthGate>
+    <ErrorBoundary>
+      <AuthGate>
+        <AppInner />
+      </AuthGate>
+    </ErrorBoundary>
   );
 }
 
 function AppInner() {
   const baseUrl = import.meta.env.BASE_URL || '/';
   const TAB_IDS = TABS.map((t) => t[0]);
-  // #diary / #finance — открывается из быстрых действий иконки на домашнем экране
+  // #notes / #diary / #finance — открывается из быстрых действий иконки на домашнем экране
   const [activeTab, setActiveTab] = useState(() => {
     const h = window.location.hash.slice(1);
-    return TAB_IDS.includes(h) ? h : 'dashboard';
+    return TAB_IDS.includes(h) ? h : 'notes';
   });
   const [lightbox, setLightbox] = useState(null);
 
@@ -137,7 +120,7 @@ function AppInner() {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register(`${baseUrl}sw.js`).catch(() => {});
   }, [baseUrl]);
 
-  // Горячие клавиши: 1–4 — вкладки, Esc — закрыть фото. В полях ввода не срабатывают
+  // Горячие клавиши: 1–3 — вкладки, Esc — закрыть фото. В полях ввода не срабатывают
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') setLightbox(null);
@@ -149,36 +132,6 @@ function AppInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* ---------- живые данные ---------- */
-  const [weather, setWeather] = useState({ temp: '—', desc: 'загрузка' });
-  const [rates, setRates] = useState({ usd: '—', rub: '—' });
-  const [news, setNews] = useState([]);
-
-  useEffect(() => {
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=51.2333&longitude=51.3667&current=temperature_2m,weather_code')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.current) setWeather({ temp: Math.round(d.current.temperature_2m), desc: weatherText(d.current.weather_code) });
-      })
-      .catch(() => setWeather({ temp: '—', desc: 'нет данных' }));
-
-    fetch('https://open.er-api.com/v6/latest/USD')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.rates?.KZT && d?.rates?.RUB) {
-          setRates({ usd: d.rates.KZT.toFixed(2), rub: (d.rates.KZT / d.rates.RUB).toFixed(2) });
-        }
-      })
-      .catch(() => setRates({ usd: 'нет данных', rub: 'нет данных' }));
-
-    fetch('https://dev.to/api/articles?per_page=2')
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d)) setNews(d.map((i) => ({ title: i.title, url: i.url })));
-      })
-      .catch(() => {});
-  }, []);
 
   /* ---------- аватар, баннер и подпись (редактируются на сайте) ---------- */
   const [avatar, setAvatar] = useLocalStorage('selfhq_avatar', '');
@@ -211,70 +164,6 @@ function AppInner() {
   const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   const [level, setLevel] = useLocalStorage('selfhq_level', 3);
 
-  const gainXp = (reward) => {
-    let x = xp + reward;
-    let l = level;
-    while (x >= XP_PER_LEVEL) {
-      x -= XP_PER_LEVEL;
-      l += 1;
-    }
-    setXp(x);
-    setLevel(l);
-  };
-
-  /* ---------- цитата, день рождения ---------- */
-  const [quoteIndex, setQuoteIndex] = useState(new Date().getDate() % QUOTES.length);
-  const [bdayName, setBdayName] = useLocalStorage('selfhq_bday_name', 'Мой День Рождения');
-  const [bdayDate, setBdayDate] = useLocalStorage('selfhq_bday_date', '05-15');
-  const [isEditingBday, setIsEditingBday] = useState(false);
-
-  const todayMMDD = localISO().slice(5);
-  const isBdayToday = bdayDate === todayMMDD;
-  const daysToBday = getDaysLeft(bdayDate);
-  const daysToSummer = getDaysLeft('06-01');
-
-  /* ---------- квесты: свой список, каждый день случайный набор, штраф за пропуск ---------- */
-  const [quests, setQuests] = useLocalStorage('selfhq_quests', DEFAULT_QUESTS);
-  const [todayIds, setTodayIds] = useLocalStorage('selfhq_today_ids', []);
-  const [doneIds, setDoneIds] = useLocalStorage('selfhq_done_ids', []);
-  const [questsDate, setQuestsDate] = useLocalStorage('selfhq_quests_date', '');
-  const [dailyCount, setDailyCount] = useLocalStorage('selfhq_daily_count', 4);
-  const [editQuests, setEditQuests] = useState(false);
-  const [newQuest, setNewQuest] = useState({ text: '', xp: 30 });
-
-  useEffect(() => {
-    const today = localISO();
-    if (questsDate === today) return;
-    if (questsDate) {
-      const missed = quests.filter((q) => todayIds.includes(q.id) && !doneIds.includes(q.id));
-      const penalty = missed.reduce((a, q) => a + Math.ceil(q.xp / 5), 0);
-      if (penalty) setXp(Math.max(0, xp - penalty));
-    }
-    setTodayIds([...quests].sort(() => Math.random() - 0.5).slice(0, dailyCount).map((q) => q.id));
-    setDoneIds([]);
-    setQuestsDate(today);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const todayQuests = quests.filter((q) => todayIds.includes(q.id));
-  const completeQuest = (q) => {
-    if (doneIds.includes(q.id)) return;
-    setDoneIds([...doneIds, q.id]);
-    gainXp(q.xp);
-  };
-  const updateQuest = (id, patch) => setQuests(quests.map((q) => (q.id === id ? { ...q, ...patch } : q)));
-  const removeQuest = (id) => {
-    setQuests(quests.filter((q) => q.id !== id));
-    setTodayIds(todayIds.filter((i) => i !== id));
-  };
-  const addQuest = (e) => {
-    e.preventDefault();
-    if (!newQuest.text.trim()) return;
-    const id = Date.now();
-    setQuests([...quests, { id, text: newQuest.text.trim(), xp: Math.max(1, Number(newQuest.xp) || 10) }]);
-    setTodayIds([...todayIds, id]);
-    setNewQuest({ text: '', xp: 30 });
-  };
 
   /* ---------- быстрые ссылки (редактируемые) ---------- */
   const [links, setLinks] = useLocalStorage('selfhq_links', LINKS);
@@ -320,64 +209,6 @@ function AppInner() {
     r.readAsText(file);
   };
 
-  /* ---------- древо ---------- */
-  const [skillTree, setSkillTree] = useLocalStorage('selfhq_skilltree', [
-    { id: 'branch-1', branchName: '(Колледж и Учеба)', tasks: [{ id: 't1', title: 'Сдать все задания в срок' }] }
-  ]);
-  const [newTaskText, setNewTaskText] = useState('');
-  const [selectedBranchId, setSelectedBranchId] = useState('branch-1');
-  const [newBranchName, setNewBranchName] = useState('');
-  // Если выбранную ветку удалили — берём первую существующую
-  const activeBranchId = skillTree.some((b) => b.id === selectedBranchId) ? selectedBranchId : skillTree[0]?.id;
-
-  const addTask = (e) => {
-    e.preventDefault();
-    if (!newTaskText.trim() || !activeBranchId) return;
-    setSkillTree(
-      skillTree.map((b) =>
-        b.id === activeBranchId ? { ...b, tasks: [...b.tasks, { id: Date.now().toString(), title: newTaskText.trim() }] } : b
-      )
-    );
-    setNewTaskText('');
-  };
-
-  const addBranch = (e) => {
-    e.preventDefault();
-    if (!newBranchName.trim()) return;
-    const id = Date.now().toString();
-    setSkillTree([...skillTree, { id, branchName: newBranchName.trim(), tasks: [] }]);
-    setSelectedBranchId(id);
-    setNewBranchName('');
-  };
-
-  const removeTask = (branchId, taskId) =>
-    setSkillTree(skillTree.map((b) => (b.id === branchId ? { ...b, tasks: b.tasks.filter((t) => t.id !== taskId) } : b)));
-
-  const removeBranch = (b) => {
-    if (window.confirm(`Удалить ветку «${b.branchName}» вместе с задачами?`)) setSkillTree(skillTree.filter((x) => x.id !== b.id));
-  };
-
-  const toggleTask = (branchId, taskId) => {
-    let reward = 0;
-    setSkillTree(
-      skillTree.map((b) =>
-        b.id !== branchId
-          ? b
-          : {
-              ...b,
-              tasks: b.tasks.map((t) => {
-                if (t.id !== taskId) return t;
-                if (!t.done && !t.rewarded) reward = 15;
-                return { ...t, done: !t.done, rewarded: t.rewarded || !t.done };
-              })
-            }
-      )
-    );
-    if (reward) gainXp(reward);
-  };
-  const allTasks = skillTree.flatMap((b) => b.tasks);
-  const leavesDone = allTasks.filter((t) => t.done).length;
-
   /* ---------- дневник ---------- */
   const [diaryEntries, setDiaryEntries] = useLocalStorage('selfhq_diary', []);
   const [newDiaryText, setNewDiaryText] = useState('');
@@ -418,6 +249,7 @@ function AppInner() {
   const [category, setCategory] = useState('Еда');
   const [selectedDate, setSelectedDate] = useState(localISO());
   const [activeReport, setActiveReport] = useState('none');
+  const [showBalance, setShowBalance] = useState(false); // баланс скрыт, пока не нажмёшь
 
   // Миграция старого формата (просто числа) в объекты
   useEffect(() => {
@@ -509,6 +341,36 @@ function AppInner() {
     setPiggyAmount('');
   };
 
+  /* ---------- песочница «что если?» (только расчёты, учёт не трогает) ---------- */
+  const [sb, setSb] = useLocalStorage('selfhq_sandbox', { mode: 'save', goal: '', have: '', weekly: '', income: '', spend: '', growth: '', balance: '' });
+  const [sbOpen, setSbOpen] = useState(false);
+  const num = (v) => {
+    const n = parseFloat(String(v ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const money = (n) => `${Math.round(n).toLocaleString('ru-RU')} ₸`;
+  // Если число поправили вручную, оно уже не «как есть из месяца» — предупреждение снимаем
+  const setSbField = (k, v) => setSb({ ...sb, [k]: v, ...(['income', 'spend', 'balance'].includes(k) ? { fromMonth: false } : {}) });
+  const sbField = (k, label, ph = '0', warn = false) => (
+    <label key={k} className="flex flex-col gap-1 text-[11px] text-zinc-400 font-mono">
+      {label}
+      <input type="text" inputMode="decimal" value={sb[k] ?? ''} onChange={(e) => setSbField(k, e.target.value)} placeholder={ph} className={`${input} font-mono ${warn ? 'ring-1 ring-amber-400/80' : ''}`} />
+    </label>
+  );
+
+  // Сценарий 1: за сколько накоплю
+  const sbLeft = Math.max(0, num(sb.goal) - num(sb.have));
+  const sbWeeks = num(sb.weekly) > 0 ? Math.ceil(sbLeft / num(sb.weekly)) : null;
+  const sbDate = new Date();
+  if (sbWeeks) sbDate.setDate(sbDate.getDate() + sbWeeks * 7);
+  // Сценарий 2: рост дохода до конца года (текущий месяц считается)
+  const monthsLeft = 12 - nowD.getMonth();
+  const sbBase = num(sb.income) - num(sb.spend);
+  const sbGrown = num(sb.income) * (1 + num(sb.growth) / 100) - num(sb.spend);
+  const sbEndBase = num(sb.balance) + sbBase * monthsLeft;
+  const sbEndGrown = num(sb.balance) + sbGrown * monthsLeft;
+  const sign = (n) => (n >= 0 ? 'text-emerald-400' : 'text-red-400');
+
   /* ---------- разметка ---------- */
   return (
     <div className="min-h-[100dvh] text-red-50 p-3 sm:p-6 pb-28 md:pb-6 font-sans relative overflow-x-hidden bg-[#020202]">
@@ -553,64 +415,25 @@ function AppInner() {
       </nav>
 
       <main className="relative z-10 max-w-6xl mx-auto">
-        {/* ДАШБОРД */}
-        {activeTab === 'dashboard' && (
+        {/* ЗАМЕТКИ */}
+        {activeTab === 'notes' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            <div className={`${card} p-4 sm:p-5`}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
-                  <Zap className="w-5 h-5 text-orange-500" /> Ежедневные испытания
-                </h2>
-                <button onClick={() => setEditQuests(!editQuests)} className="text-xs text-zinc-400 hover:text-white underline cursor-pointer p-1">
-                  {editQuests ? 'Готово' : 'Изменить'}
-                </button>
-              </div>
-              {editQuests ? (
-                <div className="space-y-2.5">
-                  <p className="text-[11px] text-zinc-500">Каждый день выпадает случайный набор из списка. Невыполненный квест — штраф в 1/5 его XP.</p>
-                  <label className="flex items-center justify-between text-xs text-zinc-300">
-                    Квестов в день (со следующего дня)
-                    <input type="number" value={dailyCount} onChange={(e) => setDailyCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))} className={`${input} w-16 py-1 font-mono`} />
+            <div className={`${card} p-4 sm:p-5 lg:col-span-2 flex flex-col gap-3`}>
+              <h2 className="text-lg font-semibold text-red-500">📝 Заметки</h2>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={12} placeholder="Быстрые мысли, ссылки, идеи..." className={`${input} w-full resize-y`} />
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between pt-3 border-t border-white/10">
+                <span className="text-xs text-zinc-400">Данные хранятся только в этом браузере. Сделай копию, чтобы не потерять.</span>
+                <div className="flex gap-2">
+                  <button onClick={exportData} className={`flex-1 sm:flex-none px-4 py-2.5 ${grad} rounded-xl text-sm cursor-pointer`}>⬇ Скачать копию</button>
+                  <label className="flex-1 sm:flex-none text-center px-4 py-2.5 bg-black/60 border border-white/30 rounded-xl text-sm text-red-200 hover:border-white/60 cursor-pointer">
+                    ⬆ Загрузить
+                    <input type="file" accept="application/json" onChange={importData} className="hidden" />
                   </label>
-                  {quests.map((q) => (
-                    <div key={q.id} className="flex items-center gap-2">
-                      <input type="text" value={q.text} onChange={(e) => updateQuest(q.id, { text: e.target.value })} className={`${input} flex-1 min-w-0`} />
-                      <input type="number" value={q.xp} onChange={(e) => updateQuest(q.id, { xp: Math.max(1, Number(e.target.value) || 1) })} className={`${input} w-16 font-mono`} />
-                      <button onClick={() => removeQuest(q.id)} className="p-2 text-zinc-400 hover:text-red-500 cursor-pointer" aria-label="Удалить квест"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  ))}
-                  <form onSubmit={addQuest} className="flex gap-2 pt-1">
-                    <input type="text" value={newQuest.text} onChange={(e) => setNewQuest({ ...newQuest, text: e.target.value })} placeholder="Новый квест" className={`${input} flex-1 min-w-0`} />
-                    <input type="number" value={newQuest.xp} onChange={(e) => setNewQuest({ ...newQuest, xp: e.target.value })} className={`${input} w-16 font-mono`} />
-                    <button type="submit" className={`px-3 ${grad} rounded-xl cursor-pointer`}>+</button>
-                  </form>
                 </div>
-              ) : isBdayToday ? (
-                <div className="py-8 text-center bg-red-950/30 border border-amber-500/40 rounded-xl p-4">
-                  <p className="text-amber-400 font-bold text-base mb-1">🎉 Праздничный день!</p>
-                  <p className="text-xs text-red-200">Сегодня {bdayName}! Квесты отменены — отдыхай! 🍰</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {todayQuests.length === 0 && <p className="text-xs text-zinc-500 italic">Квестов нет — добавь их через «Изменить».</p>}
-                  {todayQuests.map((q) => {
-                    const done = doneIds.includes(q.id);
-                    return (
-                      <div key={q.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition ${done ? 'bg-red-950/20 border-white/20 opacity-50' : 'bg-black/50 border-white/20 hover:border-white/50'}`}>
-                        <span className={`text-sm ${done ? 'line-through text-zinc-500' : 'text-red-100'}`}>{q.text}</span>
-                        {!done ? (
-                          <button onClick={() => completeQuest(q)} className="shrink-0 text-xs bg-red-600/20 text-red-300 px-3 py-2 rounded-lg border border-white/40 hover:bg-red-600 hover:text-white transition cursor-pointer font-medium">+{q.xp} XP</button>
-                        ) : (
-                          <CheckCircle className="w-5 h-5 shrink-0 text-red-500" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              </div>
             </div>
 
-            <div className={`${card} p-4 sm:p-5`}>
+            <div className={`${card} p-4 sm:p-5 h-fit`}>
               <div className="flex items-center justify-between mb-3.5">
                 <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
                   <BookOpen className="w-5 h-5 text-orange-500" /> Быстрые ссылки
@@ -619,7 +442,7 @@ function AppInner() {
                   {editLinks ? 'Готово' : 'Изменить'}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 lg:max-h-[220px] lg:overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
                 {links.map(([name, href], i) =>
                   editLinks ? (
                     <div key={i} className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs flex items-center justify-between gap-1">
@@ -641,202 +464,6 @@ function AppInner() {
                   <button type="submit" className={`py-2.5 ${grad} rounded-xl text-sm cursor-pointer`}>Добавить ссылку</button>
                 </form>
               )}
-            </div>
-
-            <div className={`${card} p-4 sm:p-5 flex flex-col gap-3 text-white`}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
-                  <span className="text-2xl">⛅</span>
-                  <div>
-                    <div className="text-xs text-zinc-400">Уральск</div>
-                    <div className="text-sm font-bold">{weather.temp}°C, {weather.desc}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col justify-center bg-black/40 p-3 rounded-xl border border-white/10 text-xs gap-1">
-                  <div className="flex justify-between gap-2"><span className="text-zinc-400">USD:</span><span className="font-semibold">{rates.usd}</span></div>
-                  <div className="flex justify-between gap-2"><span className="text-zinc-400">RUB:</span><span className="font-semibold">{rates.rub}</span></div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">Цитата дня</span>
-                  <button
-                    onClick={() => setQuoteIndex((p) => (p + 1) % QUOTES.length)}
-                    className="text-xs bg-red-600/25 hover:bg-red-600 text-red-200 hover:text-white px-2.5 py-1 rounded border border-white/20 transition cursor-pointer font-mono"
-                  >
-                    Следующая ↻
-                  </button>
-                </div>
-                <p className="text-red-100 font-medium leading-relaxed italic min-h-[40px]">{QUOTES[quoteIndex]}</p>
-              </div>
-
-              {news.length > 0 && (
-                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex flex-col gap-2">
-                  <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">IT-новости · Dev.to</span>
-                  {news.map((n) => (
-                    <a key={n.url} href={n.url} target="_blank" rel="noreferrer" className="text-red-100 hover:text-white line-clamp-2">{n.title}</a>
-                  ))}
-                </div>
-              )}
-
-              <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">🎉 {bdayName}</span>
-                  <button onClick={() => setIsEditingBday(!isEditingBday)} className="text-xs text-zinc-400 hover:text-white underline cursor-pointer p-1">
-                    {isEditingBday ? 'Сохранить' : 'Изменить'}
-                  </button>
-                </div>
-                {isEditingBday ? (
-                  <div className="flex flex-col gap-1.5 mt-2">
-                    <input type="text" value={bdayName} onChange={(e) => setBdayName(e.target.value)} placeholder="Чьё ДР" className={input} />
-                    {/* Нативный календарь вместо ручного ввода «ММ-ДД»: нельзя ввести кривую дату */}
-                    <input
-                      type="date"
-                      value={`2000-${bdayDate}`}
-                      onChange={(e) => e.target.value && setBdayDate(e.target.value.slice(5))}
-                      className={`${input} font-mono`}
-                    />
-                  </div>
-                ) : isBdayToday ? (
-                  <div className="text-xs font-bold text-amber-400 animate-pulse">🎁 Сегодня праздничный день! 🥳</div>
-                ) : (
-                  <div className="font-medium text-red-100">Осталось <span className="text-orange-400 font-bold">{daysToBday}</span> дн.</div>
-                )}
-              </div>
-
-              <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs flex items-center justify-between">
-                <div>
-                  <span className="text-orange-400 font-mono text-[10px] uppercase tracking-wider">☀️ До лета (1 июня)</span>
-                  <div className="font-medium text-red-100 mt-0.5">Осталось <span className="text-amber-400 font-bold">{daysToSummer}</span> дн.</div>
-                </div>
-                <span className="text-lg">🌴</span>
-              </div>
-            </div>
-
-            <div className={`${card} p-4 sm:p-5 lg:col-span-3 flex flex-col gap-3`}>
-              <h2 className="text-lg font-semibold text-red-500">📝 Заметки</h2>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Быстрые мысли, ссылки, идеи..." className={`${input} w-full resize-y`} />
-              <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between pt-3 border-t border-white/10">
-                <span className="text-xs text-zinc-400">Данные хранятся только в этом браузере. Сделай копию, чтобы не потерять.</span>
-                <div className="flex gap-2">
-                  <button onClick={exportData} className={`flex-1 sm:flex-none px-4 py-2.5 ${grad} rounded-xl text-sm cursor-pointer`}>⬇ Скачать копию</button>
-                  <label className="flex-1 sm:flex-none text-center px-4 py-2.5 bg-black/60 border border-white/30 rounded-xl text-sm text-red-200 hover:border-white/60 cursor-pointer">
-                    ⬆ Загрузить
-                    <input type="file" accept="application/json" onChange={importData} className="hidden" />
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ДРЕВО */}
-        {activeTab === 'skills' && (
-          <div className={`${card} p-4 sm:p-6`}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-white/20">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-red-500 flex items-center gap-2">
-                  <Flame className="w-6 h-6 text-orange-500 fill-orange-500" /> Древо целей и задач
-                </h2>
-                <p className="text-xs text-red-300/60 mt-1">Нажми на руну — навык освоен (+15 XP за первый раз)</p>
-              </div>
-              <form onSubmit={addBranch} className="flex gap-2 w-full md:w-auto">
-                <input type="text" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} placeholder="Название новой ветки" className={`${input} flex-1 min-w-0`} />
-                <button type="submit" className={`px-4 py-2 ${grad} rounded-xl text-sm cursor-pointer whitespace-nowrap`}>+ Ветка</button>
-              </form>
-            </div>
-
-            <form onSubmit={addTask} className="bg-black/50 p-3 sm:p-4 rounded-xl border border-white/20 mb-6 flex flex-col md:flex-row gap-3">
-              <select value={activeBranchId || ''} onChange={(e) => setSelectedBranchId(e.target.value)} className={`${input} w-full md:w-64 cursor-pointer`}>
-                {skillTree.map((b) => (<option key={b.id} value={b.id}>{b.branchName}</option>))}
-              </select>
-              <input type="text" value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Новая задача" className={`${input} flex-1 w-full`} />
-              <button type="submit" className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl text-sm hover:bg-red-500 transition cursor-pointer w-full md:w-auto">Добавить</button>
-            </form>
-
-            {/* Игровое древо навыков: светящаяся жила-ствол, узлы-ромбы, панели с рунами, искры */}
-            <div
-              className="relative overflow-hidden rounded-2xl border border-amber-900/50 p-4 sm:p-6"
-              style={{ background: 'radial-gradient(ellipse 80% 35% at 50% 100%, rgba(234,88,12,.28), transparent 70%), radial-gradient(ellipse 60% 25% at 50% 0%, rgba(220,38,38,.18), transparent 70%), repeating-linear-gradient(45deg, rgba(255,255,255,.015) 0 2px, transparent 2px 6px), #07050a' }}
-            >
-              <style>{`
-                @keyframes sparkrise{0%{top:104%;opacity:0}20%{opacity:.9}100%{top:-4%;opacity:0}}
-                @media (prefers-reduced-motion: reduce){.fx{display:none}}
-              `}</style>
-
-              <div className="relative flex flex-col gap-6 pb-2">
-                {/* ствол: светящаяся жила энергии */}
-                <div className="absolute left-4 md:left-1/2 top-4 bottom-4 w-6 -translate-x-1/2 bg-orange-600/30 blur-lg rounded-full" />
-                <div className="absolute left-4 md:left-1/2 top-4 bottom-4 w-1 -translate-x-1/2 rounded-full bg-gradient-to-t from-red-700 via-orange-500 to-amber-300 shadow-[0_0_14px_rgba(251,146,60,.9)]" />
-
-                <div className="relative z-10 flex md:justify-center">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-md bg-black/85 border border-amber-600/60 text-sm text-amber-300 font-semibold shadow-[0_0_16px_rgba(245,158,11,.3)]">
-                    <Trophy className="w-4 h-4" /> Освоено навыков: {leavesDone}/{allTasks.length}
-                  </div>
-                </div>
-
-                {skillTree.length === 0 && <p className="relative z-10 text-sm text-zinc-500 italic pl-10 md:text-center">Веток пока нет. Создай первую выше.</p>}
-
-                {skillTree.map((b, i) => [b, i]).reverse().map(([branch, i]) => {
-                  const right = i % 2 === 0;
-                  const count = branch.tasks.length;
-                  const done = branch.tasks.filter((t) => t.done).length;
-                  const full = count > 0 && done === count;
-                  return (
-                    <div key={branch.id} className={`relative pl-10 md:w-1/2 ${right ? 'md:ml-auto' : 'md:pl-0 md:pr-10'}`}>
-                      <span className={`absolute top-8 h-0.5 bg-gradient-to-r from-orange-500 to-red-700 shadow-[0_0_8px_rgba(251,146,60,.8)] left-4 w-6 ${right ? 'md:left-0 md:w-10' : 'md:left-auto md:right-0 md:w-10'}`} />
-                      <span className={`absolute top-[27px] w-3 h-3 rotate-45 bg-amber-400 shadow-[0_0_10px_#fbbf24] left-4 -translate-x-1/2 ${right ? 'md:left-0' : 'md:left-auto md:right-0 md:translate-x-1/2'}`} />
-                      <div className={`relative p-3 sm:p-4 bg-[#0d0a0f]/90 border rounded-lg group/branch transition-all duration-200 md:hover:bg-red-900/70 md:hover:border-red-500 ${full ? 'border-amber-400/80 shadow-[0_0_24px_rgba(251,146,60,.45)]' : 'border-amber-900/50 border-t-amber-600/80'}`}>
-                        <div className="flex justify-between items-center gap-2 mb-2">
-                          <h3 className={`font-bold flex items-center gap-2 text-base min-w-0 ${full ? 'text-amber-300' : 'text-amber-100'}`}>
-                            <span className="truncate">{branch.branchName}</span>
-                            {full && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400 text-black font-bold shrink-0">MAX</span>}
-                          </h3>
-                          <button onClick={() => removeBranch(branch)} className="md:opacity-0 md:group-hover/branch:opacity-100 shrink-0 transition cursor-pointer px-2.5 py-1.5 flex items-center gap-1 text-xs text-white bg-black/60 rounded-lg border border-white/40 hover:bg-black/80" aria-label="Удалить ветку">
-                            <Trash2 className="w-4 h-4" /> Удалить ветку
-                          </button>
-                        </div>
-                        {count > 0 && (
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex-1 flex gap-0.5">
-                              {branch.tasks.map((t) => (
-                                <span key={t.id} className={`flex-1 h-1.5 rounded-sm ${t.done ? 'bg-gradient-to-r from-orange-500 to-amber-300 shadow-[0_0_6px_rgba(251,146,60,.8)]' : 'bg-white/10'}`} />
-                              ))}
-                            </div>
-                            <span className="text-[11px] font-mono text-amber-200/80">{done}/{count}</span>
-                          </div>
-                        )}
-                        <div className="flex flex-col gap-2">
-                          {count === 0 && <p className="text-xs text-white/60 italic">Навыков нет — добавь задачу выше.</p>}
-                          {branch.tasks.map((task) => (
-                            <div key={task.id} className={`flex items-center gap-2 rounded-md border pr-1 ${task.done ? 'bg-amber-950/40 border-amber-500/50' : 'bg-black/50 border-white/15'}`}>
-                              <button onClick={() => toggleTask(branch.id, task.id)} aria-pressed={!!task.done} className="flex-1 min-w-0 flex items-center gap-2.5 p-2 text-left cursor-pointer">
-                                <span className={`w-7 h-7 shrink-0 grid place-items-center rotate-45 rounded-sm border ${task.done ? 'bg-gradient-to-br from-amber-300 to-orange-600 border-amber-200 text-black shadow-[0_0_12px_rgba(251,146,60,.8)]' : 'bg-zinc-900 border-white/25 text-zinc-600'}`}>
-                                  <Zap className="w-3.5 h-3.5 -rotate-45" />
-                                </span>
-                                <span className={`text-sm break-words min-w-0 ${task.done ? 'text-amber-200' : 'text-zinc-300'}`}>{task.title}</span>
-                              </button>
-                              <button onClick={() => removeTask(branch.id, task.id)} className="px-2 py-1 text-white/40 hover:text-white cursor-pointer" aria-label="Удалить задачу">✕</button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="relative z-10 flex md:justify-center">
-                  <div className="-ml-3 md:ml-0 flex flex-col items-center">
-                    <div className="w-14 h-16 grid place-items-center bg-gradient-to-b from-amber-300 to-orange-700 text-black text-xl font-extrabold shadow-[0_0_20px_rgba(251,146,60,.8)]" style={{ clipPath: 'polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)' }}>{level}</div>
-                    <span className="text-[11px] text-amber-300/80 mt-1">Ранг</span>
-                  </div>
-                </div>
-              </div>
-
-              {Array.from({ length: 14 }, (_, i) => (
-                <span key={`s${i}`} className="fx absolute w-1 h-1 rounded-full bg-orange-400 shadow-[0_0_6px_#fb923c] pointer-events-none" style={{ left: `${(i * 7 + 4) % 96}%`, animation: `sparkrise ${6 + (i % 4) * 2}s linear ${-i * 1.1}s infinite` }} />
-              ))}
             </div>
           </div>
         )}
@@ -929,10 +556,18 @@ function AppInner() {
           <div className={`max-w-xl mx-auto ${card} p-4 sm:p-8 flex flex-col gap-5`}>
             <h2 className="text-xl sm:text-2xl font-bold text-red-500">💳 Финансы</h2>
 
-            <div className="p-5 bg-black/70 border border-white/20 rounded-2xl flex flex-col items-center shadow-inner">
-              <span className="text-xs text-zinc-400 uppercase font-mono tracking-wider mb-1">Общий баланс</span>
-              <span className={`text-3xl font-extrabold font-mono ${total >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(total)}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowBalance(!showBalance)}
+              aria-pressed={showBalance}
+              className="p-5 bg-black/70 border border-white/20 hover:border-white/40 rounded-2xl flex flex-col items-center shadow-inner cursor-pointer transition"
+            >
+              <span className="text-xs text-zinc-400 uppercase font-mono tracking-wider mb-1 flex items-center gap-1.5">
+                {showBalance ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} Общий баланс
+              </span>
+              <span className={`text-3xl font-extrabold font-mono transition ${total >= 0 ? 'text-emerald-400' : 'text-red-400'} ${showBalance ? '' : 'blur-md select-none'}`}>{fmt(total)}</span>
+              {!showBalance && <span className="text-[11px] text-zinc-500 mt-1">Нажми, чтобы показать</span>}
+            </button>
 
             <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex flex-col gap-2">
               <div className="flex justify-between items-center gap-3 text-xs font-mono">
@@ -994,6 +629,80 @@ function AppInner() {
               ))}
             </div>
 
+            <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex flex-col gap-3">
+              <button type="button" onClick={() => setSbOpen(!sbOpen)} aria-expanded={sbOpen} className="flex justify-between items-center text-xs text-zinc-400 font-mono uppercase cursor-pointer">
+                <span>🧪 Песочница «что если?»</span>
+                <span className="text-base leading-none">{sbOpen ? '−' : '+'}</span>
+              </button>
+
+              {sbOpen && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[['save', 'Накопить'], ['grow', 'Рост дохода']].map(([id, label]) => (
+                      <button key={id} type="button" onClick={() => setSbField('mode', id)} className={`py-2 rounded-xl border text-xs font-medium cursor-pointer transition ${sb.mode === id ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {sb.mode === 'save' ? (
+                    <>
+                      <p className="text-xs text-zinc-400">Если откладывать сумму каждую неделю, когда накоплю нужное?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {sbField('goal', 'Цель, ₸')}
+                        {sbField('have', 'Уже есть, ₸')}
+                      </div>
+                      {sbField('weekly', 'Откладываю в неделю, ₸')}
+                      {(piggy.goal > 0 || piggyTotal > 0) && (
+                        <button type="button" onClick={() => setSb({ ...sb, goal: piggy.goal ? String(piggy.goal) : sb.goal, have: String(piggyTotal) })} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Взять цель и сумму из копилки</button>
+                      )}
+                      <div className="p-3 bg-black/60 border border-white/10 rounded-xl text-xs font-mono">
+                        {num(sb.goal) <= 0 ? (
+                          <span className="text-zinc-500">Введи цель и сумму в неделю.</span>
+                        ) : sbLeft === 0 ? (
+                          <span className="text-emerald-400">Цель уже достигнута 🎉</span>
+                        ) : sbWeeks === null ? (
+                          <span className="text-zinc-500">Осталось накопить {money(sbLeft)}. Введи, сколько откладываешь в неделю.</span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-zinc-400">Осталось накопить: <span className="text-red-100">{money(sbLeft)}</span></span>
+                            <span className="text-amber-300 font-bold text-sm">Через {sbWeeks} нед. (≈ {(sbWeeks / 4.345).toFixed(1)} мес.)</span>
+                            <span className="text-zinc-400">Примерно к {sbDate.toLocaleDateString('ru-RU')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-zinc-400">Если доход вырастет на Y%, сколько свободных денег будет к концу года?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {sbField('income', 'Доход в месяц, ₸', '0', sb.fromMonth)}
+                        {sbField('spend', 'Расходы в месяц, ₸', '0', sb.fromMonth)}
+                        {sbField('growth', 'Рост дохода, %', '10')}
+                        {sbField('balance', 'Баланс сейчас, ₸', '0', sb.fromMonth)}
+                      </div>
+                      <button type="button" onClick={() => setSb({ ...sb, income: String(totals.month.income), spend: String(totals.month.expense), balance: String(total), fromMonth: true })} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Взять из текущего месяца (месяц может быть неполным)</button>
+                      {sb.fromMonth && (
+                        <p role="alert" className="flex items-start gap-1.5 text-[11px] text-amber-300 bg-amber-400/10 border border-amber-400/40 rounded-lg p-2">
+                          <span>⚠️</span>
+                          <span>Внимание: месяц ещё не закончился, данные спрогнозированы или взяты как есть.</span>
+                        </p>
+                      )}
+                      <div className={`p-3 bg-black/60 border rounded-xl text-xs font-mono flex flex-col gap-1.5 ${sb.fromMonth ? 'border-amber-400/50' : 'border-white/10'}`}>
+                        <div className="flex justify-between gap-2"><span className="text-zinc-400">Свободно в месяц сейчас</span><span className={sign(sbBase)}>{money(sbBase)}</span></div>
+                        <div className="flex justify-between gap-2"><span className="text-zinc-400">После роста</span><span className={sign(sbGrown)}>{money(sbGrown)}</span></div>
+                        <div className="flex justify-between gap-2 pt-1.5 border-t border-white/10"><span className="text-zinc-400">К концу года без роста</span><span className={sign(sbEndBase)}>{money(sbEndBase)}</span></div>
+                        <div className="flex justify-between gap-2"><span className="text-zinc-400">К концу года с ростом</span><span className={`${sign(sbEndGrown)} font-bold`}>{money(sbEndGrown)}</span></div>
+                        <div className="flex justify-between gap-2"><span className="text-zinc-400">Разница</span><span className={sign(sbEndGrown - sbEndBase)}>{sbEndGrown - sbEndBase >= 0 ? '+' : '−'}{money(Math.abs(sbEndGrown - sbEndBase))}</span></div>
+                        <span className="text-[10px] text-zinc-500">Считается {monthsLeft} мес. до конца года, включая текущий.</span>
+                      </div>
+                    </>
+                  )}
+                  <p className="text-[11px] text-zinc-500">Это только расчёт: твои данные учёта не меняются.</p>
+                </>
+              )}
+            </div>
+
             <div className="flex flex-col gap-2">
               <span className="text-xs text-zinc-400 font-mono uppercase">Выписки:</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1011,6 +720,12 @@ function AppInner() {
               {activeReport !== 'none' && (
                 <div className="p-4 bg-black/80 border border-red-500/40 rounded-xl flex flex-col gap-2 font-mono">
                   <span className="text-xs text-zinc-300">{reportLabels[activeReport]}</span>
+                  {activeReport === 'month' && (
+                    <p role="alert" className="flex items-start gap-1.5 text-[11px] text-amber-300 bg-amber-400/10 border border-amber-400/40 rounded-lg p-2 font-sans">
+                      <span>⚠️</span>
+                      <span>Внимание: месяц ещё не закончился, данные взяты как есть.</span>
+                    </p>
+                  )}
                   <div className="flex justify-between text-sm"><span className="text-zinc-400">Поднял (доход)</span><span className="text-emerald-400 font-bold">+{totals[activeReport].income} ₸</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-400">Потратил</span><span className="text-red-400 font-bold">−{totals[activeReport].expense} ₸</span></div>
                   <div className="flex justify-between text-sm pt-2 border-t border-white/10">

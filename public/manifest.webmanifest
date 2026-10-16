@@ -7,12 +7,34 @@
   "background_color": "#020202",
   "theme_color": "#dc2626",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Новая запись в дневник", "short_name": "Дневник", "url": "./#diary" },
-    { "name": "Записать трату", "short_name": "Финансы", "url": "./#finance" },
-    { "name": "Квесты", "short_name": "Дашборд", "url": "./#dashboard" }
+    {
+      "name": "Заметки",
+      "short_name": "Заметки",
+      "url": "./#notes"
+    },
+    {
+      "name": "Новая запись в дневник",
+      "short_name": "Дневник",
+      "url": "./#diary"
+    },
+    {
+      "name": "Записать трату",
+      "short_name": "Финансы",
+      "url": "./#finance"
+    }
   ]
 }
