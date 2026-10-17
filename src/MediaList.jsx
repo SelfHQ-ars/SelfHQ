@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, Film, Pencil } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { card, input, grad } from './ui';
+import { card, input, btnPrimary, btnSecondary, btnIcon } from './kit';
 
 const TYPES = ['Фильм', 'Сериал', 'Аниме', 'Книга', 'Игра'];
 const STATUS = ['want', 'doing', 'done'];
@@ -35,8 +35,8 @@ export default function MediaList() {
   };
   const upd = (id, patch) => setItems(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   const shown = items.filter((i) => (ft === 'all' || i.type === ft) && (fs === 'all' || i.status === fs));
-  const chip = (active) => `px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition ${active ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white font-bold' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)]'}`;
-  const step = 'w-8 h-8 rounded-lg border border-[rgb(var(--c-white)/0.12)] bg-[rgb(var(--c-black)/0.4)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)] cursor-pointer';
+  const chip = (active) => `px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${active ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.15)] text-[rgb(var(--c-zinc-300))] hover:border-[rgb(var(--c-white)/0.3)] hover:text-[rgb(var(--c-zinc-50))]'}`;
+  const step = `${btnSecondary} !px-0 w-8 h-8`;
 
   return (
     <div className={`max-w-xl mx-auto ${card} p-3 sm:p-5 flex flex-col gap-4`}>
@@ -51,7 +51,7 @@ export default function MediaList() {
           {UNIT[type] && (
             <input type="number" inputMode="numeric" min="0" value={ep} onChange={(e) => setEp(e.target.value)} placeholder={UNIT[type] === 'серия' ? 'Серия' : 'Глава'} className={`${input} w-24 font-mono`} />
           )}
-          <button type="submit" className={`px-5 py-2 ${grad} rounded-xl text-sm cursor-pointer`}>Добавить</button>
+          <button type="submit" className={btnPrimary}>Добавить</button>
         </div>
       </form>
 
@@ -78,7 +78,7 @@ export default function MediaList() {
                 </div>
                 <span className="text-[11px] text-[rgb(var(--c-zinc-500))] font-mono">{i.type}</span>
               </div>
-              <button onClick={() => window.confirm(`Удалить «${i.title}»?`) && setItems(items.filter((x) => x.id !== i.id))} className="p-1.5 text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] cursor-pointer shrink-0" aria-label="Удалить"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => window.confirm(`Удалить «${i.title}»?`) && setItems(items.filter((x) => x.id !== i.id))} className={`${btnIcon} shrink-0`} aria-label="Удалить"><Trash2 className="w-4 h-4" /></button>
             </div>
 
             <div className="flex gap-2">

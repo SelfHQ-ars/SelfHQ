@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pencil, RotateCcw, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { btnPrimary, btnSecondary } from './kit';
 
 // Список виджетов. Порядок меняется только в режиме правки (кнопка с карандашом):
 // на компьютере виджеты можно перетаскивать за ручку, на телефоне — двигать стрелками.
@@ -22,8 +23,6 @@ export default function Widgets({ storageKey, items, header = null, className = 
     next.splice(Math.max(0, Math.min(to, next.length)), 0, id);
     setSaved(next);
   };
-  const btn = 'p-1.5 rounded-lg border cursor-pointer disabled:opacity-30 disabled:cursor-default';
-  const idle = 'border-[rgb(var(--c-white)/0.18)] bg-[rgb(var(--c-black)/0.6)] text-[rgb(var(--c-zinc-300))] hover:text-[rgb(var(--c-white))]';
 
   return (
     <>
@@ -31,11 +30,11 @@ export default function Widgets({ storageKey, items, header = null, className = 
         <div className="min-w-0">{header}</div>
         <div className="flex gap-1.5 ml-auto">
           {edit && (
-            <button type="button" onClick={() => setSaved([])} className={`${btn} ${idle} flex items-center gap-1.5 text-xs px-2.5`} title="Вернуть порядок по умолчанию">
+            <button type="button" onClick={() => setSaved([])} className={`${btnSecondary} !px-2.5 !py-1.5`} title="Вернуть порядок по умолчанию">
               <RotateCcw className="w-3.5 h-3.5" /> Сбросить
             </button>
           )}
-          <button type="button" onClick={() => setEdit(!edit)} aria-pressed={edit} className={`${btn} flex items-center gap-1.5 text-xs px-2.5 ${edit ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white' : idle}`} title="Изменить порядок виджетов">
+          <button type="button" onClick={() => setEdit(!edit)} aria-pressed={edit} className={`${edit ? btnPrimary : btnSecondary} !px-2.5 !py-1.5`} title="Изменить порядок виджетов">
             <Pencil className="w-3.5 h-3.5" /> {edit ? 'Готово' : 'Порядок'}
           </button>
         </div>
@@ -78,8 +77,8 @@ export default function Widgets({ storageKey, items, header = null, className = 
                   <GripVertical className="w-4 h-4" />
                 </span>
                 <span className="text-xs text-[rgb(var(--c-zinc-300))] truncate flex-1">{it.title}</span>
-                <button type="button" onClick={() => move(it.id, idx - 1)} disabled={idx === 0} className={`${btn} ${idle}`} aria-label="Выше"><ChevronUp className="w-4 h-4" /></button>
-                <button type="button" onClick={() => move(it.id, idx + 1)} disabled={idx === sorted.length - 1} className={`${btn} ${idle}`} aria-label="Ниже"><ChevronDown className="w-4 h-4" /></button>
+                <button type="button" onClick={() => move(it.id, idx - 1)} disabled={idx === 0} className={`${btnSecondary} !p-1.5`} aria-label="Выше"><ChevronUp className="w-4 h-4" /></button>
+                <button type="button" onClick={() => move(it.id, idx + 1)} disabled={idx === sorted.length - 1} className={`${btnSecondary} !p-1.5`} aria-label="Ниже"><ChevronDown className="w-4 h-4" /></button>
               </div>
             )}
             <div className={edit ? 'pointer-events-none select-none opacity-80' : 'h-full'}>{it.node}</div>

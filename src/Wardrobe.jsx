@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, ImagePlus, Shirt } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { card, input, grad, fitToDataUrl } from './ui';
+import { card, input, fitToDataUrl, panel, seg, segWrap, btnPrimary, btnSecondary, btnIcon } from './kit';
 
 const CATS = ['Футболки', 'Худи', 'Брюки', 'Обувь', 'Верхняя одежда', 'Аксессуары'];
 const SEASONS = ['Всесезон', 'Лето', 'Демисезон', 'Зима'];
@@ -48,7 +48,7 @@ export default function Wardrobe() {
 
   const shown = items.filter((i) => (fc === 'all' || i.category === fc) && (fs === 'all' || i.season === fs));
   const byId = Object.fromEntries(items.map((i) => [i.id, i]));
-  const tab = (active) => `py-2 rounded-xl border text-sm font-medium cursor-pointer transition ${active ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white font-bold' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)]'}`;
+  const tab = (active) => `flex-1 ${seg(active)}`;
 
   return (
     <div className={`max-w-3xl mx-auto ${card} p-3 sm:p-5 flex flex-col gap-4`}>
@@ -63,14 +63,14 @@ export default function Wardrobe() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`${segWrap} w-full`}>
         <button onClick={() => setView('items')} className={tab(view === 'items')}>Вещи ({items.length})</button>
         <button onClick={() => setView('outfits')} className={tab(view === 'outfits')}>Образы ({outfits.length})</button>
       </div>
 
       {view === 'items' ? (
         <>
-          <form onSubmit={addItem} className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-2">
+          <form onSubmit={addItem} className={`${panel} flex flex-col gap-2`}>
             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Название (чёрное худи Nike)" className={input} />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${input} cursor-pointer min-w-0`}>{CATS.map((c) => (<option key={c}>{c}</option>))}</select>
@@ -78,12 +78,12 @@ export default function Wardrobe() {
               <input type="text" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} placeholder="Размер" className={`${input} min-w-0 col-span-2 sm:col-span-1`} />
             </div>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-[rgb(var(--c-red-200))] bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.18)] hover:border-[rgb(var(--c-white)/0.6)] rounded-lg px-3 py-2 cursor-pointer">
+              <label className={`${btnSecondary} cursor-pointer`}>
                 <ImagePlus className="w-4 h-4" /> Фото
                 <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
               </label>
               {form.photo && <img src={form.photo} alt="" className="w-12 h-12 object-cover rounded-lg border border-[rgb(var(--c-white)/0.18)]" />}
-              <button type="submit" className={`ml-auto px-5 py-2 ${grad} rounded-xl text-sm cursor-pointer`}>Добавить</button>
+              <button type="submit" className={`${btnPrimary} ml-auto`}>Добавить</button>
             </div>
           </form>
 
@@ -107,20 +107,20 @@ export default function Wardrobe() {
         </>
       ) : (
         <>
-          <div className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-2">
+          <div className={`${panel} flex flex-col gap-2`}>
             <span className="text-xs text-[rgb(var(--c-zinc-400))]">Выбери от 2 вещей, чтобы собрать образ.</span>
             {items.length === 0 ? (
               <p className="text-xs text-[rgb(var(--c-zinc-500))] italic">Сначала добавь вещи на вкладке «Вещи».</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {items.map((i) => (
-                  <button key={i.id} type="button" onClick={() => setPick(pick.includes(i.id) ? pick.filter((x) => x !== i.id) : [...pick, i.id])} className={`px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition ${pick.includes(i.id) ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)]'}`}>{i.name}</button>
+                  <button key={i.id} type="button" onClick={() => setPick(pick.includes(i.id) ? pick.filter((x) => x !== i.id) : [...pick, i.id])} className={`px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition ${pick.includes(i.id) ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.15)] text-[rgb(var(--c-zinc-300))] hover:border-[rgb(var(--c-white)/0.3)] hover:text-[rgb(var(--c-zinc-50))]'}`}>{i.name}</button>
                 ))}
               </div>
             )}
             <div className="flex gap-2">
               <input type="text" value={oName} onChange={(e) => setOName(e.target.value)} placeholder="Название образа" className={`${input} flex-1 min-w-0`} />
-              <button type="button" onClick={saveOutfit} disabled={pick.length < 2} className={`px-5 py-2 ${grad} rounded-xl text-sm cursor-pointer disabled:opacity-40`}>Сохранить</button>
+              <button type="button" onClick={saveOutfit} disabled={pick.length < 2} className={btnPrimary}>Сохранить</button>
             </div>
           </div>
 
@@ -130,7 +130,7 @@ export default function Wardrobe() {
               <div key={o.id} className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-xl flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-[rgb(var(--c-red-50))] break-words">{o.name}</span>
-                  <button onClick={() => window.confirm(`Удалить «${o.name}»?`) && setOutfits(outfits.filter((x) => x.id !== o.id))} className="p-1.5 text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] cursor-pointer" aria-label="Удалить образ"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => window.confirm(`Удалить «${o.name}»?`) && setOutfits(outfits.filter((x) => x.id !== o.id))} className={btnIcon} aria-label="Удалить образ"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {o.ids.map((id) => byId[id]).filter(Boolean).map((i) => (

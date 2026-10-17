@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PiggyBank, Trash2, Target, Check } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { card, input, panel, label, btnPrimary, btnSecondary, btnDanger, btnIcon, Title, localISO, money, sum, num2, fmt, readJSON } from './kit';
+import { input, panel, label, btnPrimary, btnSecondary, btnDanger, btnIcon, Title, localISO, money, sum, num2, fmt, readJSON } from './kit';
 
 const toNum = (v) => {
   const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
@@ -95,12 +95,12 @@ export default function Piggy() {
   const firstOpen = goals.find((g) => g.target > sum(g.items || []));
 
   return (
-    <div className={`max-w-xl w-full mx-auto ${card} p-3 sm:p-5 flex flex-col gap-3`}>
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg sm:text-xl font-semibold text-[rgb(var(--c-white))]"><PiggyBank className="w-5 h-5 text-[rgb(var(--c-orange-500))]" /> Копилка</h2>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-2">
+        <Title icon={PiggyBank}>Копилка</Title>
         <div className="text-right">
           <div className={label}>Всего накоплено</div>
-          <div className="font-mono font-semibold tabular-nums text-[rgb(var(--c-amber-300))]">{money(totalSaved)}</div>
+          <div className="font-mono font-semibold tabular-nums text-xl text-[rgb(var(--c-amber-300))]">{money(totalSaved)}</div>
         </div>
       </div>
 

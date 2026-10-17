@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, Scale } from 'lucide-react';
-import { input } from './ui';
+import { input, label, panel, btnSecondary, btnIcon } from './kit';
 
 // группа: w — вес, v — объём, p — штуки; коэффициент — к базовой единице (г, мл, шт)
 const UNITS = { 'г': ['w', 1], 'кг': ['w', 1000], 'мл': ['v', 1], 'л': ['v', 1000], 'шт': ['p', 1] };
@@ -32,8 +32,8 @@ export default function PriceCompare() {
   const mixed = Object.keys(count).length > 1;
 
   return (
-    <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-3">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex justify-between items-center text-xs text-[rgb(var(--c-zinc-400))] font-medium uppercase cursor-pointer">
+    <div className={`${panel} flex flex-col gap-3`}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className={`flex w-full justify-between items-center cursor-pointer ${label}`}>
         <span className="flex items-center gap-1.5"><Scale className="w-3.5 h-3.5 text-[rgb(var(--c-orange-500))]" /> Сравнение цен</span>
         <span className="text-base leading-none">{open ? '−' : '+'}</span>
       </button>
@@ -49,7 +49,7 @@ export default function PriceCompare() {
                 <div className="flex gap-2">
                   <input type="text" value={r.name} onChange={(e) => upd(r.id, { name: e.target.value })} placeholder={`Вариант ${idx + 1}`} className={`${input} flex-1 min-w-0`} />
                   {rows.length > 2 && (
-                    <button type="button" onClick={() => setRows(rows.filter((x) => x.id !== r.id))} className="p-2 text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] cursor-pointer" aria-label="Удалить вариант"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => setRows(rows.filter((x) => x.id !== r.id))} className={btnIcon} aria-label="Удалить вариант"><Trash2 className="w-4 h-4" /></button>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -71,8 +71,8 @@ export default function PriceCompare() {
           })}
           {mixed && <p className="text-[11px] text-[rgb(var(--c-amber-300))]">Сравнивай варианты в одной группе: вес, объём или штуки — разные группы между собой не сравниваются.</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setRows([...rows, blank()])} disabled={rows.length >= 8} className="flex-1 py-2 rounded-xl border border-[rgb(var(--c-white)/0.12)] bg-[rgb(var(--c-black)/0.4)] text-xs text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)] cursor-pointer disabled:opacity-40">+ Вариант</button>
-            <button type="button" onClick={() => setRows([blank(), blank()])} className="px-4 py-2 rounded-xl border border-[rgb(var(--c-white)/0.12)] bg-[rgb(var(--c-black)/0.4)] text-xs text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] cursor-pointer">Сбросить</button>
+            <button type="button" onClick={() => setRows([...rows, blank()])} disabled={rows.length >= 8} className={`${btnSecondary} flex-1`}>+ Вариант</button>
+            <button type="button" onClick={() => setRows([blank(), blank()])} className={btnSecondary}>Сбросить</button>
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FlaskConical, TriangleAlert } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { input, money } from './ui';
+import { input, money, label, panel, seg, segWrap, btnSecondary } from './kit';
 
 const num = (v) => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
@@ -35,18 +35,18 @@ export default function Sandbox({ piggyGoal = 0, piggyTotal = 0, month = { incom
   const sign = (n) => (n >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]');
 
   return (
-            <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-3">
-              <button type="button" onClick={() => setSbOpen(!sbOpen)} aria-expanded={sbOpen} className="flex justify-between items-center text-xs text-[rgb(var(--c-zinc-400))] font-medium uppercase cursor-pointer">
+            <div className={`${panel} flex flex-col gap-3`}>
+              <button type="button" onClick={() => setSbOpen(!sbOpen)} aria-expanded={sbOpen} className={`flex w-full justify-between items-center cursor-pointer ${label}`}>
                 <span className="flex items-center gap-1.5"><FlaskConical className="w-3.5 h-3.5 text-[rgb(var(--c-orange-500))]" /> Песочница «что если?»</span>
                 <span className="text-base leading-none">{sbOpen ? '−' : '+'}</span>
               </button>
 
               {sbOpen && (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[['save', 'Накопить'], ['grow', 'Рост дохода']].map(([id, label]) => (
-                      <button key={id} type="button" onClick={() => setSbField('mode', id)} className={`py-2 rounded-xl border text-xs font-medium cursor-pointer transition ${sb.mode === id ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white font-bold' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)]'}`}>
-                        {label}
+                  <div className={`${segWrap} w-full`}>
+                    {[['save', 'Накопить'], ['grow', 'Рост дохода']].map(([id, text]) => (
+                      <button key={id} type="button" onClick={() => setSbField('mode', id)} className={`flex-1 ${seg(sb.mode === id)}`}>
+                        {text}
                       </button>
                     ))}
                   </div>
@@ -60,7 +60,7 @@ export default function Sandbox({ piggyGoal = 0, piggyTotal = 0, month = { incom
                       </div>
                       {sbField('weekly', 'Откладываю в неделю, ₸')}
                       {(piggyGoal > 0 || piggyTotal > 0) && (
-                        <button type="button" onClick={() => setSb({ ...sb, goal: piggyGoal ? String(piggyGoal) : sb.goal, have: String(piggyTotal) })} className="text-[11px] text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] underline text-left cursor-pointer">Взять цель и сумму из копилки</button>
+                        <button type="button" onClick={() => setSb({ ...sb, goal: piggyGoal ? String(piggyGoal) : sb.goal, have: String(piggyTotal) })} className={`${btnSecondary} w-full`}>Взять цель и сумму из копилки</button>
                       )}
                       <div className="p-3 bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.1)] rounded-xl text-xs font-mono">
                         {num(sb.goal) <= 0 ? (
@@ -87,7 +87,7 @@ export default function Sandbox({ piggyGoal = 0, piggyTotal = 0, month = { incom
                         {sbField('growth', 'Рост дохода, %', '10')}
                         {sbField('balance', 'Баланс сейчас, ₸', '0', sb.fromMonth)}
                       </div>
-                      <button type="button" onClick={() => setSb({ ...sb, income: String(month.income), spend: String(month.expense), balance: String(balance), fromMonth: true })} className="text-[11px] text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] underline text-left cursor-pointer">Взять из текущего месяца (месяц может быть неполным)</button>
+                      <button type="button" onClick={() => setSb({ ...sb, income: String(month.income), spend: String(month.expense), balance: String(balance), fromMonth: true })} className={`${btnSecondary} w-full`}>Взять из текущего месяца (месяц может быть неполным)</button>
                       {sb.fromMonth && (
                         <p role="alert" className="flex items-start gap-1.5 text-[11px] text-[rgb(var(--c-amber-300))] bg-[rgb(var(--c-amber-400)/0.1)] border border-[rgb(var(--c-amber-400)/0.4)] rounded-lg p-2">
                           <TriangleAlert className="w-3.5 h-3.5 shrink-0 mt-px" />

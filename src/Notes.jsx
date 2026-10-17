@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BookOpen, Trash2, ChevronRight, StickyNote } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Widgets from './Widgets';
-import { card, input, grad, localISO } from './ui';
+import { card, input, localISO, btnPrimary, btnSecondary, btnIcon } from './kit';
 
 // Ключи, которые не должны попадать в резервную копию (пароли и сессия)
 const PRIVATE_KEYS = ['selfhq_accounts', 'selfhq_session'];
@@ -78,8 +78,8 @@ export default function Notes() {
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between pt-3 border-t border-[rgb(var(--c-white)/0.1)]">
                 <span className="text-xs text-[rgb(var(--c-zinc-400))]">Данные хранятся только в этом браузере. Сделай копию, чтобы не потерять.</span>
                 <div className="flex gap-2">
-                  <button onClick={exportData} className={`flex-1 sm:flex-none px-4 py-2 ${grad} rounded-xl text-sm cursor-pointer`}>⬇ Скачать копию</button>
-                  <label className="flex-1 sm:flex-none text-center px-4 py-2 bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.18)] rounded-xl text-sm text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.6)] cursor-pointer">
+                  <button onClick={exportData} className={`${btnPrimary} flex-1 sm:flex-none`}>⬇ Скачать копию</button>
+                  <label className={`${btnSecondary} flex-1 sm:flex-none cursor-pointer`}>
                     ⬆ Загрузить
                     <input type="file" accept="application/json" onChange={importData} className="hidden" />
                   </label>
@@ -93,7 +93,7 @@ export default function Notes() {
                 <h2 className="text-lg font-semibold flex items-center gap-2 text-[rgb(var(--c-white))]">
                   <BookOpen className="w-5 h-5 text-[rgb(var(--c-orange-500))]" /> Быстрые ссылки
                 </h2>
-                <button onClick={() => setEditLinks(!editLinks)} className="text-xs text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] underline cursor-pointer p-1">
+                <button onClick={() => setEditLinks(!editLinks)} className={`${btnSecondary} !px-3 !py-1.5`}>
                   {editLinks ? 'Готово' : 'Изменить'}
                 </button>
               </div>
@@ -102,7 +102,7 @@ export default function Notes() {
                   editLinks ? (
                     <div key={i} className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-xl text-xs flex items-center justify-between gap-1">
                       <span className="truncate text-[rgb(var(--c-red-200))]">{name}</span>
-                      <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="p-1 text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-red-500))] cursor-pointer" aria-label="Удалить ссылку"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className={btnIcon} aria-label="Удалить ссылку"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ) : (
                     <a key={i} href={href} target="_blank" rel="noreferrer" className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-xl text-xs hover:border-[rgb(var(--c-red-500))] hover:bg-[rgb(var(--c-red-600)/0.1)] hover:scale-[1.02] transition flex items-center justify-between group shadow-sm">
@@ -116,7 +116,7 @@ export default function Notes() {
                 <form onSubmit={addLink} className="flex flex-col gap-2 mt-3">
                   <input type="text" value={newLink.name} onChange={(e) => setNewLink({ ...newLink, name: e.target.value })} placeholder="Название" className={input} />
                   <input type="text" value={newLink.url} onChange={(e) => setNewLink({ ...newLink, url: e.target.value })} placeholder="Адрес (example.com)" className={input} />
-                  <button type="submit" className={`py-2 ${grad} rounded-xl text-sm cursor-pointer`}>Добавить ссылку</button>
+                  <button type="submit" className={btnPrimary}>Добавить ссылку</button>
                 </form>
               )}
             </div>

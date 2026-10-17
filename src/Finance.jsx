@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Eye, EyeOff, Flame, Lock, TriangleAlert, Trash2, ImagePlus, X, Tag, Search, Gauge } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Widgets from './Widgets';
+import Piggy from './Piggy';
 import { card, input, label, panel, btnPrimary, btnSecondary, btnIcon, segWrap, seg, Title, fitToDataUrl, localISO, money, sum, num2, fmt } from './kit';
 
 const CATEGORIES = [
@@ -256,7 +257,7 @@ export default function Finance({ gainXp, onPhoto }) {
               node: (
                 <button type="button" onClick={() => setShowBalance(!showBalance)} aria-pressed={showBalance} className={`${panel} relative w-full flex flex-col items-center justify-center gap-1 py-5 hover:border-[rgb(var(--c-white)/0.25)] transition cursor-pointer`}>
                   <span className={label}>Общий баланс</span>
-                  <span className={`text-3xl sm:text-4xl font-semibold font-mono tabular-nums tracking-tight transition ${total >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'} ${showBalance ? '' : 'blur-md select-none'}`}>{money(total)}</span>
+                  <span className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight transition ${total >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'} ${showBalance ? '' : 'blur-md select-none'}`}>{money(total)}</span>
                   <span className="text-[11px] text-[rgb(var(--c-zinc-500))]">{showBalance ? 'Нажми, чтобы скрыть' : 'Нажми, чтобы показать'}</span>
                   <span className="absolute top-3 right-3 text-[rgb(var(--c-zinc-500))]">{showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</span>
                 </button>
@@ -423,6 +424,7 @@ export default function Finance({ gainXp, onPhoto }) {
                 </div>
               )
             },
+            { id: 'piggy', title: 'Копилка', node: <Piggy /> },
             {
               id: 'categories',
               title: 'Траты по категориям',
