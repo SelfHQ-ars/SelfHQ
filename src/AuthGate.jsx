@@ -23,7 +23,7 @@ export const logout = () => {
 };
 
 const field =
-  'w-full bg-black/70 border border-white/30 rounded-xl px-3 py-3 text-base text-red-100 placeholder-zinc-600 focus:outline-none focus:border-red-500';
+  'w-full bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.18)] rounded-xl px-3 py-3 text-base text-[rgb(var(--c-red-100))] placeholder:text-[rgb(var(--c-zinc-600))] focus:outline-none focus:border-[rgb(var(--c-red-500))]';
 
 export default function AuthGate({ children }) {
   const [nick, setNick] = useState(getSessionNick);
@@ -65,20 +65,20 @@ export default function AuthGate({ children }) {
   };
 
   return (
-    <div className="min-h-[100dvh] grid place-items-center p-4 bg-[#020202] text-red-50 font-sans">
-      <form onSubmit={submit} className="w-full max-w-sm bg-zinc-950/90 border border-white/30 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.25)] p-6 flex flex-col gap-3">
-        <h1 className="text-3xl font-extrabold text-center text-white drop-shadow-[0_0_12px_rgba(239,68,68,0.7)]">SelfHQ</h1>
-        <p className="text-center text-xs text-white/60 font-mono tracking-widest uppercase mb-2">{mode === 'login' ? 'Вход' : 'Создать аккаунт'}</p>
+    <div className="min-h-[100dvh] grid place-items-center p-4 bg-[rgb(var(--c-page))] text-[rgb(var(--c-red-50))] font-sans">
+      <form onSubmit={submit} className="w-full max-w-sm bg-[rgb(var(--c-zinc-950)/0.9)] border border-[rgb(var(--c-white)/0.18)] rounded-2xl shadow-lg p-6 flex flex-col gap-3">
+        <h1 className="text-3xl font-extrabold text-center text-[rgb(var(--c-white))]">SelfHQ</h1>
+        <p className="text-center text-xs text-[rgb(var(--c-white)/0.6)] font-medium tracking-widest uppercase mb-2">{mode === 'login' ? 'Вход' : 'Создать аккаунт'}</p>
         <input className={field} placeholder="Ник" autoComplete="username" value={form.nick} onChange={(e) => setForm({ ...form, nick: e.target.value })} />
         <input className={field} type="password" placeholder="Пароль" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={form.pw} onChange={(e) => setForm({ ...form, pw: e.target.value })} />
         {mode === 'register' && (
           <input className={field} type="password" placeholder="Повтори пароль" autoComplete="new-password" value={form.pw2} onChange={(e) => setForm({ ...form, pw2: e.target.value })} />
         )}
-        {err && <p className="text-xs text-red-400">{err}</p>}
-        <button disabled={busy} className="py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold cursor-pointer disabled:opacity-60">
+        {err && <p className="text-xs text-[rgb(var(--c-red-400))]">{err}</p>}
+        <button disabled={busy} className="py-3 rounded-xl bg-gradient-to-r from-[rgb(var(--c-red-600))] to-[rgb(var(--c-orange-600))] text-white font-bold cursor-pointer disabled:opacity-60">
           {mode === 'login' ? 'Войти' : 'Создать и войти'}
         </button>
-        <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }} className="text-xs text-zinc-400 hover:text-white underline cursor-pointer">
+        <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }} className="text-xs text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] underline cursor-pointer">
           {mode === 'login' ? 'Нет аккаунта? Создать' : 'Уже есть аккаунт? Войти'}
         </button>
       </form>

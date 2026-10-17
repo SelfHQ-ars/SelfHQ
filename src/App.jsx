@@ -1,24 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, BookText, Trash2, ChevronRight, Sparkles, Wallet, ImagePlus, X, StickyNote, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BookText, Trash2, Sparkles, Wallet, ImagePlus, X, Eye, EyeOff, LayoutGrid, CreditCard, PiggyBank, Flame, Lock, AlertTriangle } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { card, input, grad, fitToDataUrl, localISO, money } from './ui';
 import ProfileHeader from './ProfileHeader';
+import Widgets from './Widgets';
+import { useTheme } from './theme';
+import Space from './Space';
 import AuthGate, { getSessionNick, logout } from './AuthGate';
 
 /* ---------- константы и хелперы ---------- */
 const XP_PER_LEVEL = 500;
-// Ключи, которые не должны попадать в резервную копию (пароли и сессия)
-const PRIVATE_KEYS = ['selfhq_accounts', 'selfhq_session'];
-
-const LINKS = [
-  ['GitHub', 'https://github.com'],
-  ['Figma', 'https://figma.com'],
-  ['Stitch', 'https://stitch.withgoogle.com'],
-  ['akspic', 'https://akspic.ru/'],
-  ['TypingClub', 'https://www.typingclub.com/'],
-  ['Whatsapp', 'https://web.whatsapp.com/'],
-  ['kinogo', 'https://tv.kinogo.mu/'],
-  ['YouTube', 'https://www.youtube.com/']
-];
 
 const CATEGORIES = [
   { name: 'Еда', color: '#ef4444' },
@@ -29,43 +20,16 @@ const CATEGORIES = [
 ];
 
 const TABS = [
-  ['notes', 'Заметки', StickyNote],
+  ['finance', 'Финансы', Wallet],
   ['diary', 'Дневник', BookText],
-  ['finance', 'Финансы', Wallet]
+  ['space', 'Пространство', LayoutGrid]
 ];
 
-const pad = (n) => String(n).padStart(2, '0');
-// Локальная дата (а не UTC, как у toISOString) — иначе ночью в Казахстане дата «вчера»
-const localISO = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 const sum = (arr) => Math.round(arr.reduce((a, c) => a + c.amount, 0) * 100) / 100;
 const fmt = (n) => `${n > 0 ? '+' : ''}${n} ₸`;
 
-// Фото для дневника: вписываем в max×max и сжимаем, чтобы влезло в localStorage
-const fitToDataUrl = (file, max = 900, q = 0.72) =>
-  new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      resolve(c.toDataURL('image/jpeg', q));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('load'));
-    };
-    img.src = url;
-  });
 
-// text-base на мобильных: при шрифте < 16px iOS зумит страницу при фокусе на поле
-const card = 'bg-zinc-950/90 backdrop-blur-md border border-white/30 rounded-2xl shadow-xl';
-const input = 'bg-black/70 border border-white/30 rounded-xl px-3 py-2.5 text-base md:text-sm text-red-100 placeholder-zinc-600 focus:outline-none focus:border-red-500';
-const grad = 'bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold';
 // На тач-экранах нет hover — кнопки удаления всегда видны, на десктопе появляются при наведении
 const hoverShow = 'md:opacity-0 md:group-hover:opacity-100';
 
@@ -77,11 +41,11 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="min-h-[100dvh] grid place-items-center p-4 bg-[#020202] text-red-50">
-        <div className="max-w-md bg-zinc-950 border border-red-500/50 rounded-2xl p-5 text-sm">
-          <p className="font-bold text-red-400 mb-2">Что-то пошло не так</p>
-          <pre className="whitespace-pre-wrap break-words text-xs text-zinc-300">{String(this.state.error?.message || this.state.error)}</pre>
-          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-xl bg-red-600 text-white cursor-pointer">Перезагрузить</button>
+      <div className="min-h-[100dvh] grid place-items-center p-4 bg-[rgb(var(--c-page))] text-[rgb(var(--c-red-50))]">
+        <div className="max-w-md bg-[rgb(var(--c-zinc-950))] border border-[rgb(var(--c-red-500)/0.5)] rounded-2xl p-5 text-sm">
+          <p className="font-bold text-[rgb(var(--c-rose-400))] mb-2">Что-то пошло не так</p>
+          <pre className="whitespace-pre-wrap break-words text-xs text-[rgb(var(--c-zinc-300))]">{String(this.state.error?.message || this.state.error)}</pre>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-xl bg-[rgb(var(--c-red-600))] text-white cursor-pointer">Перезагрузить</button>
         </div>
       </div>
     );
@@ -102,12 +66,13 @@ export default function App() {
 function AppInner() {
   const baseUrl = import.meta.env.BASE_URL || '/';
   const TAB_IDS = TABS.map((t) => t[0]);
-  // #notes / #diary / #finance — открывается из быстрых действий иконки на домашнем экране
+  // #finance / #diary / #space — открывается из быстрых действий иконки на домашнем экране
   const [activeTab, setActiveTab] = useState(() => {
     const h = window.location.hash.slice(1);
-    return TAB_IDS.includes(h) ? h : 'notes';
+    return TAB_IDS.includes(h) ? h : ['notes', 'wardrobe', 'media'].includes(h) ? 'space' : 'finance';
   });
   const [lightbox, setLightbox] = useState(null);
+  const [theme, setTheme, toggleTheme] = useTheme();
 
   // PWA: манифест + service worker (оффлайн-режим)
   useEffect(() => {
@@ -117,15 +82,19 @@ function AppInner() {
       link.href = `${baseUrl}manifest.webmanifest`;
       document.head.appendChild(link);
     }
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register(`${baseUrl}sw.js`).catch(() => {});
+    if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register(`${baseUrl}sw.js`).catch(() => {});
   }, [baseUrl]);
 
-  // Горячие клавиши: 1–3 — вкладки, Esc — закрыть фото. В полях ввода не срабатывают
+  // Горячие клавиши: 1–3 — вкладки, T — тема, Esc — закрыть фото. В полях ввода не срабатывают
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') setLightbox(null);
       const t = e.target;
       if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) return;
+      if (e.code === 'KeyT') {
+        toggleTheme();
+        return;
+      }
       const n = Number(e.key);
       if (n >= 1 && n <= TAB_IDS.length) setActiveTab(TAB_IDS[n - 1]);
     };
@@ -164,50 +133,17 @@ function AppInner() {
   const [xp, setXp] = useLocalStorage('selfhq_xp', 240);
   const [level, setLevel] = useLocalStorage('selfhq_level', 3);
 
-
-  /* ---------- быстрые ссылки (редактируемые) ---------- */
-  const [links, setLinks] = useLocalStorage('selfhq_links', LINKS);
-  const [editLinks, setEditLinks] = useState(false);
-  const [newLink, setNewLink] = useState({ name: '', url: '' });
-  const addLink = (e) => {
-    e.preventDefault();
-    let url = newLink.url.trim();
-    if (!newLink.name.trim() || !url) return;
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    setLinks([...links, [newLink.name.trim(), url]]);
-    setNewLink({ name: '', url: '' });
+  const gainXp = (reward) => {
+    let x = xp + reward;
+    let l = level;
+    while (x >= XP_PER_LEVEL) {
+      x -= XP_PER_LEVEL;
+      l += 1;
+    }
+    setXp(x);
+    setLevel(l);
   };
 
-  /* ---------- заметки и резервная копия ---------- */
-  const [notes, setNotes] = useLocalStorage('selfhq_notes', '');
-  const exportData = () => {
-    const data = {};
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith('selfhq_') && !PRIVATE_KEYS.includes(k))
-      .forEach((k) => (data[k] = localStorage.getItem(k)));
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    a.download = `selfhq-backup-${localISO()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-  const importData = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !window.confirm('Заменить текущие данные данными из файла?')) return;
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        Object.entries(JSON.parse(r.result)).forEach(
-          ([k, v]) => k.startsWith('selfhq_') && !PRIVATE_KEYS.includes(k) && typeof v === 'string' && localStorage.setItem(k, v)
-        );
-        window.location.reload();
-      } catch {
-        alert('Не удалось прочитать файл');
-      }
-    };
-    r.readAsText(file);
-  };
 
   /* ---------- дневник ---------- */
   const [diaryEntries, setDiaryEntries] = useLocalStorage('selfhq_diary', []);
@@ -247,6 +183,8 @@ function AppInner() {
   const [amount, setAmount] = useState('');
   const [kind, setKind] = useState('expense'); // на iOS в поле number нет минуса — выбираем тип кнопкой
   const [category, setCategory] = useState('Еда');
+  const [moneyNote, setMoneyNote] = useState('');
+  const [moneyPhoto, setMoneyPhoto] = useState('');
   const [selectedDate, setSelectedDate] = useState(localISO());
   const [activeReport, setActiveReport] = useState('none');
   const [showBalance, setShowBalance] = useState(false); // баланс скрыт, пока не нажмёшь
@@ -268,11 +206,27 @@ function AppInner() {
     const val = Math.abs(parseFloat(amount.replace(',', '.')));
     if (!Number.isFinite(val) || val === 0) return;
     const signed = kind === 'expense' ? -val : val;
-    setFinanceData({
-      ...financeData,
-      expenses: [{ id: Date.now(), amount: signed, date: selectedDate, category: kind === 'expense' ? category : null }, ...(financeData.expenses || [])]
-    });
-    setAmount('');
+    try {
+      setFinanceData({
+        ...financeData,
+        expenses: [
+          {
+            id: Date.now(),
+            amount: signed,
+            date: selectedDate,
+            category: kind === 'expense' ? category : null,
+            ...(moneyNote.trim() ? { note: moneyNote.trim() } : {}),
+            ...(moneyPhoto ? { photo: moneyPhoto } : {})
+          },
+          ...(financeData.expenses || [])
+        ]
+      });
+      setAmount('');
+      setMoneyNote('');
+      setMoneyPhoto('');
+    } catch {
+      alert('Не хватает места в браузере: сделай резервную копию и удали старые фото');
+    }
   };
 
   const deleteMoney = (id) => setFinanceData({ ...financeData, expenses: (financeData.expenses || []).filter((i) => i.id !== id) });
@@ -324,7 +278,7 @@ function AppInner() {
   const monthExpenses = all.filter((i) => i.amount < 0 && i.date && i.date.startsWith(ym));
   const monthSpent = Math.abs(sum(monthExpenses));
   const limitPct = limit > 0 ? (monthSpent / limit) * 100 : 0;
-  const limitColor = limitPct >= 100 ? 'bg-red-500' : limitPct >= 80 ? 'bg-amber-400' : 'bg-emerald-500';
+  const limitColor = limitPct >= 100 ? 'bg-[rgb(var(--c-rose-500))]' : limitPct >= 80 ? 'bg-[rgb(var(--c-amber-400))]' : 'bg-[rgb(var(--c-emerald-500))]';
 
   const catSpent = CATEGORIES.map((c) => ({ ...c, value: Math.abs(sum(monthExpenses.filter((i) => (i.category || 'Другое') === c.name))) })).filter((c) => c.value > 0);
   const catTotal = catSpent.reduce((a, c) => a + c.value, 0);
@@ -341,45 +295,94 @@ function AppInner() {
     setPiggyAmount('');
   };
 
-  /* ---------- песочница «что если?» (только расчёты, учёт не трогает) ---------- */
-  const [sb, setSb] = useLocalStorage('selfhq_sandbox', { mode: 'save', goal: '', have: '', weekly: '', income: '', spend: '', growth: '', balance: '' });
-  const [sbOpen, setSbOpen] = useState(false);
-  const num = (v) => {
-    const n = parseFloat(String(v ?? '').replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
+  /* ---------- огоньки: день в рамках дневного лимита; месяц в рамках лимита = сразу все огоньки месяца ---------- */
+  // Дневной лимит = месячный лимит ÷ число дней в месяце. Дни засчитываются при открытии сайта на следующий день.
+  const STREAK_XP = 50;
+  const [streakData, setStreakData] = useLocalStorage('selfhq_streak', { last: '', streak: 0, best: 0, flames: 0, since: '', monthsDone: '', history: [] });
+  const daysIn = (iso) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), 0).getDate();
+  const shiftDay = (iso, n) => localISO(new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)) + n));
+  const shiftMonth = (m, n) => {
+    const d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1 + n, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
-  const money = (n) => `${Math.round(n).toLocaleString('ru-RU')} ₸`;
-  // Если число поправили вручную, оно уже не «как есть из месяца» — предупреждение снимаем
-  const setSbField = (k, v) => setSb({ ...sb, [k]: v, ...(['income', 'spend', 'balance'].includes(k) ? { fromMonth: false } : {}) });
-  const sbField = (k, label, ph = '0', warn = false) => (
-    <label key={k} className="flex flex-col gap-1 text-[11px] text-zinc-400 font-mono">
-      {label}
-      <input type="text" inputMode="decimal" value={sb[k] ?? ''} onChange={(e) => setSbField(k, e.target.value)} placeholder={ph} className={`${input} font-mono ${warn ? 'ring-1 ring-amber-400/80' : ''}`} />
-    </label>
-  );
+  const spentOn = (iso) => Math.abs(sum(all.filter((i) => i.amount < 0 && i.date === iso)));
+  const allowanceOn = (iso) => (limit > 0 ? limit / daysIn(iso) : 0);
+  const todayISO = localISO();
+  const streakRan = useRef(false);
+  const spentToday = spentOn(todayISO);
+  const allowToday = allowanceOn(todayISO);
 
-  // Сценарий 1: за сколько накоплю
-  const sbLeft = Math.max(0, num(sb.goal) - num(sb.have));
-  const sbWeeks = num(sb.weekly) > 0 ? Math.ceil(sbLeft / num(sb.weekly)) : null;
-  const sbDate = new Date();
-  if (sbWeeks) sbDate.setDate(sbDate.getDate() + sbWeeks * 7);
-  // Сценарий 2: рост дохода до конца года (текущий месяц считается)
-  const monthsLeft = 12 - nowD.getMonth();
-  const sbBase = num(sb.income) - num(sb.spend);
-  const sbGrown = num(sb.income) * (1 + num(sb.growth) / 100) - num(sb.spend);
-  const sbEndBase = num(sb.balance) + sbBase * monthsLeft;
-  const sbEndGrown = num(sb.balance) + sbGrown * monthsLeft;
-  const sign = (n) => (n >= 0 ? 'text-emerald-400' : 'text-red-400');
+  // Клетки текущего месяца: ok — огонёк горит, over — вышел за рамки, today-* — сегодня, idle — не считается
+  const dimNow = daysIn(todayISO);
+  const trackFrom = streakData.since || (streakData.last ? shiftDay(streakData.last, 1) : todayISO);
+  const dayCells = Array.from({ length: dimNow }, (_, i) => {
+    const iso = `${ym}-${String(i + 1).padStart(2, '0')}`;
+    let state = 'idle';
+    if (limit > 0) {
+      if (iso === todayISO) state = spentToday <= allowToday ? 'today-ok' : 'today-over';
+      else if (iso < todayISO && iso >= trackFrom) state = spentOn(iso) <= allowanceOn(iso) ? 'ok' : 'over';
+    }
+    return { iso, day: i + 1, state };
+  });
+  const monthLit = dayCells.filter((c) => c.state === 'ok').length;
+  const lastMonth = (streakData.history || []).slice(-1)[0];
+
+  useEffect(() => {
+    if (streakRan.current) return;
+    streakRan.current = true;
+    const yesterday = shiftDay(todayISO, -1);
+    const prevYM = shiftMonth(todayISO.slice(0, 7), -1);
+    const d = { last: '', streak: 0, best: 0, flames: 0, since: '', monthsDone: '', history: [], ...streakData };
+    let reward = 0;
+    let changed = false;
+    if (!d.last) {
+      Object.assign(d, { last: yesterday, since: todayISO, monthsDone: prevYM }); // отсчёт начинается с сегодняшнего дня
+      changed = true;
+    } else {
+      if (!d.since) { d.since = shiftDay(d.last, 1); changed = true; }
+      if (!d.monthsDone) { d.monthsDone = prevYM; changed = true; }
+      if (limit > 0 && d.last < yesterday) {
+        let from = shiftDay(d.last, 1);
+        const floor = shiftDay(yesterday, -6); // догоняем максимум за последние 7 дней
+        if (from < floor) from = floor;
+        for (let day = from; day <= yesterday; day = shiftDay(day, 1)) {
+          if (spentOn(day) <= allowanceOn(day)) {
+            d.streak += 1;
+            reward += STREAK_XP;
+            d.best = Math.max(d.best, d.streak);
+          } else {
+            d.streak = 0;
+          }
+        }
+        d.last = yesterday;
+        changed = true;
+      }
+      // Закрытые месяцы: уложился в лимит, значит сразу получаешь огоньки за все дни месяца (28/29/30/31)
+      for (let m = shiftMonth(d.monthsDone, 1), guard = 0; m <= prevYM && guard < 12; m = shiftMonth(m, 1), guard += 1) {
+        const items = all.filter((i) => i.date && i.date.startsWith(m));
+        const spent = Math.abs(sum(items.filter((i) => i.amount < 0)));
+        const days = daysIn(`${m}-01`);
+        const ok = limit > 0 && items.length > 0 && spent <= limit;
+        if (ok) d.flames += days;
+        d.history = [...d.history, { ym: m, ok, days }].slice(-12);
+        changed = true;
+      }
+      if (d.monthsDone !== prevYM) { d.monthsDone = prevYM; changed = true; }
+    }
+    if (changed) setStreakData(d);
+    if (reward) gainXp(reward);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ---------- разметка ---------- */
   return (
-    <div className="min-h-[100dvh] text-red-50 p-3 sm:p-6 pb-28 md:pb-6 font-sans relative overflow-x-hidden bg-[#020202]">
+    <div className="min-h-[100dvh] text-[rgb(var(--c-red-50))] p-3 sm:p-6 pb-28 md:pb-6 font-sans relative overflow-x-hidden bg-[rgb(var(--c-page))]">
       {/* Фон: fixed + cover — на телефоне нет чёрных полос и дёрганья при скролле */}
       <div
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('${baseUrl}bg.jpg')` }}
+        style={{ backgroundImage: `url('${baseUrl}bg.jpg')`, opacity: theme.mode === 'light' ? 0.14 : 1 }}
       />
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 bg-[linear-gradient(to_right,#1f0c0c_1px,transparent_1px),linear-gradient(to_bottom,#1f0c0c_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 bg-[linear-gradient(to_right,rgb(var(--c-grid))_1px,transparent_1px),linear-gradient(to_bottom,rgb(var(--c-grid))_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
       {/* Шапка профиля с баннером */}
       <ProfileHeader
@@ -392,6 +395,8 @@ function AppInner() {
         defaultAvatar={`${baseUrl}avatar.jpg`}
         banner={banner}
         setBanner={setBanner}
+        theme={theme}
+        onTheme={setTheme}
         level={level}
         xp={xp}
         xpMax={XP_PER_LEVEL}
@@ -400,13 +405,13 @@ function AppInner() {
 
       {/* Навигация: снизу на телефоне (под большой палец), под шапкой на десктопе.
           Вынесена из header, т.к. backdrop-blur ломает position:fixed у потомков */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 flex gap-1 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-black/90 backdrop-blur-md border-t border-white/30 md:static md:max-w-6xl md:mx-auto md:mb-6 md:p-1.5 md:pb-1.5 md:bg-black/60 md:border md:rounded-xl">
+      <nav className="fixed bottom-0 inset-x-0 z-30 flex gap-1 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-[rgb(var(--c-black)/0.9)] backdrop-blur-md border-t border-[rgb(var(--c-white)/0.18)] md:static md:max-w-6xl md:mx-auto md:mb-6 md:p-1.5 md:pb-1.5 md:bg-[rgb(var(--c-black)/0.6)] md:border md:rounded-xl">
         {TABS.map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 rounded-lg text-[11px] md:text-sm font-medium transition cursor-pointer ${
-              activeTab === id ? `${grad} shadow-[0_0_15px_rgba(239,68,68,0.6)]` : 'text-red-300/70 hover:text-white'
+              activeTab === id ? `${grad}` : 'text-[rgb(var(--c-red-300)/0.7)] hover:text-[rgb(var(--c-white))]'
             }`}
           >
             <Icon className="w-5 h-5 md:w-4 md:h-4" /> {label}
@@ -415,65 +420,12 @@ function AppInner() {
       </nav>
 
       <main className="relative z-10 max-w-6xl mx-auto">
-        {/* ЗАМЕТКИ */}
-        {activeTab === 'notes' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            <div className={`${card} p-4 sm:p-5 lg:col-span-2 flex flex-col gap-3`}>
-              <h2 className="text-lg font-semibold text-red-500">📝 Заметки</h2>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={12} placeholder="Быстрые мысли, ссылки, идеи..." className={`${input} w-full resize-y`} />
-              <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between pt-3 border-t border-white/10">
-                <span className="text-xs text-zinc-400">Данные хранятся только в этом браузере. Сделай копию, чтобы не потерять.</span>
-                <div className="flex gap-2">
-                  <button onClick={exportData} className={`flex-1 sm:flex-none px-4 py-2.5 ${grad} rounded-xl text-sm cursor-pointer`}>⬇ Скачать копию</button>
-                  <label className="flex-1 sm:flex-none text-center px-4 py-2.5 bg-black/60 border border-white/30 rounded-xl text-sm text-red-200 hover:border-white/60 cursor-pointer">
-                    ⬆ Загрузить
-                    <input type="file" accept="application/json" onChange={importData} className="hidden" />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className={`${card} p-4 sm:p-5 h-fit`}>
-              <div className="flex items-center justify-between mb-3.5">
-                <h2 className="text-lg font-semibold flex items-center gap-2 text-red-500">
-                  <BookOpen className="w-5 h-5 text-orange-500" /> Быстрые ссылки
-                </h2>
-                <button onClick={() => setEditLinks(!editLinks)} className="text-xs text-zinc-400 hover:text-white underline cursor-pointer p-1">
-                  {editLinks ? 'Готово' : 'Изменить'}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
-                {links.map(([name, href], i) =>
-                  editLinks ? (
-                    <div key={i} className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs flex items-center justify-between gap-1">
-                      <span className="truncate text-red-200">{name}</span>
-                      <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="p-1 text-zinc-400 hover:text-red-500 cursor-pointer" aria-label="Удалить ссылку"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  ) : (
-                    <a key={i} href={href} target="_blank" rel="noreferrer" className="p-3 bg-black/50 border border-white/20 rounded-xl text-xs hover:border-red-500 hover:bg-red-600/10 hover:scale-[1.02] transition flex items-center justify-between group shadow-sm">
-                      <span className="text-red-200 group-hover:text-white font-semibold truncate">{name}</span>
-                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-red-600/50 group-hover:text-white" />
-                    </a>
-                  )
-                )}
-              </div>
-              {editLinks && (
-                <form onSubmit={addLink} className="flex flex-col gap-2 mt-3">
-                  <input type="text" value={newLink.name} onChange={(e) => setNewLink({ ...newLink, name: e.target.value })} placeholder="Название" className={input} />
-                  <input type="text" value={newLink.url} onChange={(e) => setNewLink({ ...newLink, url: e.target.value })} placeholder="Адрес (example.com)" className={input} />
-                  <button type="submit" className={`py-2.5 ${grad} rounded-xl text-sm cursor-pointer`}>Добавить ссылку</button>
-                </form>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* ДНЕВНИК */}
         {activeTab === 'diary' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            <div className={`${card} p-4 sm:p-6 h-fit`}>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-500">
-                <BookText className="w-6 h-6 text-orange-500" /> Новая запись
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+            <div className={`${card} p-3 sm:p-5 h-fit`}>
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-[rgb(var(--c-white))]">
+                <BookText className="w-6 h-6 text-[rgb(var(--c-orange-500))]" /> Новая запись
               </h2>
               <form onSubmit={addDiaryEntry} className="space-y-4">
                 <textarea
@@ -491,54 +443,54 @@ function AppInner() {
                   className={`${input} w-full p-4 resize-none`}
                 />
                 <div className="flex flex-wrap gap-2 items-center">
-                  <label className="flex items-center gap-1.5 text-xs text-red-200 bg-black/60 border border-white/30 hover:border-white/60 rounded-lg px-3 py-2 cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-xs text-[rgb(var(--c-red-200))] bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.18)] hover:border-[rgb(var(--c-white)/0.6)] rounded-lg px-3 py-2 cursor-pointer">
                     <ImagePlus className="w-4 h-4" /> Фото
                     <input type="file" accept="image/*" multiple onChange={(e) => { addDiaryFiles(e.target.files); e.target.value = ''; }} className="hidden" />
                   </label>
                   {newDiaryImgs.map((src, i) => (
                     <div key={i} className="relative w-14 h-14">
-                      <img src={src} alt="" className="w-full h-full object-cover rounded-lg border border-white/30" />
-                      <button type="button" onClick={() => setNewDiaryImgs(newDiaryImgs.filter((_, j) => j !== i))} className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-red-600 text-white cursor-pointer" aria-label="Убрать фото"><X className="w-3 h-3" /></button>
+                      <img src={src} alt="" className="w-full h-full object-cover rounded-lg border border-[rgb(var(--c-white)/0.18)]" />
+                      <button type="button" onClick={() => setNewDiaryImgs(newDiaryImgs.filter((_, j) => j !== i))} className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-[rgb(var(--c-red-600))] text-white cursor-pointer" aria-label="Убрать фото"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
-                  <span className="text-[11px] text-zinc-500 w-full">Скриншот можно вставить через Ctrl+V прямо в поле. До 6 фото.</span>
+                  <span className="text-[11px] text-[rgb(var(--c-zinc-500))] w-full">Скриншот можно вставить через Ctrl+V прямо в поле. До 6 фото.</span>
                 </div>
-                <button type="submit" className={`w-full py-3 ${grad} rounded-xl text-sm hover:opacity-90 transition cursor-pointer`}>Сохранить запись</button>
+                <button type="submit" className={`w-full py-2.5 ${grad} rounded-xl text-sm hover:opacity-90 transition cursor-pointer`}>Сохранить запись</button>
               </form>
             </div>
 
-            <div className={`lg:col-span-2 ${card} p-4 sm:p-8 lg:min-h-[500px]`}>
-              <h2 className="text-xl sm:text-2xl font-bold mb-6 text-red-500 flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-orange-500" /> Личный архив мыслей
+            <div className={`lg:col-span-2 ${card} p-3 sm:p-5 lg:min-h-[500px]`}>
+              <h2 className="text-lg sm:text-xl font-semibold mb-6 text-[rgb(var(--c-white))] flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-[rgb(var(--c-orange-500))]" /> Личный архив мыслей
               </h2>
               {diaryEntries.length > 0 && (
                 <input type="search" value={diarySearch} onChange={(e) => setDiarySearch(e.target.value)} placeholder="Поиск по записям" className={`${input} w-full mb-5`} />
               )}
               {diaryEntries.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-center border-2 border-dashed border-white/20 rounded-2xl p-6">
-                  <BookText className="w-12 h-12 text-zinc-700 mb-3" />
-                  <p className="text-sm text-zinc-500 font-medium">Дневник пока пуст.</p>
-                  <p className="text-xs text-zinc-600 mt-1">Напишите первую запись.</p>
+                <div className="flex flex-col items-center justify-center h-48 text-center border-2 border-dashed border-[rgb(var(--c-white)/0.12)] rounded-2xl p-6">
+                  <BookText className="w-12 h-12 text-[rgb(var(--c-zinc-700))] mb-3" />
+                  <p className="text-sm text-[rgb(var(--c-zinc-500))] font-medium">Дневник пока пуст.</p>
+                  <p className="text-xs text-[rgb(var(--c-zinc-600))] mt-1">Напишите первую запись.</p>
                 </div>
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {shownEntries.length === 0 && <p className="text-sm text-zinc-500 italic text-center py-6">Ничего не найдено.</p>}
+                  {shownEntries.length === 0 && <p className="text-sm text-[rgb(var(--c-zinc-500))] italic text-center py-6">Ничего не найдено.</p>}
                   {shownEntries.map((entry) => (
-                    <div key={entry.id} className="p-4 sm:p-6 bg-black/60 border border-white/30 rounded-2xl relative group hover:border-red-500 transition shadow-lg">
-                      <span className="text-xs text-orange-400 font-mono mb-2 block pr-10">{entry.date}</span>
-                      {entry.text && <p className="text-base text-red-50 whitespace-pre-wrap break-words leading-relaxed">{entry.text}</p>}
+                    <div key={entry.id} className="p-3 sm:p-5 bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.18)] rounded-2xl relative group hover:border-[rgb(var(--c-red-500))] transition shadow-lg">
+                      <span className="text-xs text-[rgb(var(--c-orange-400))] font-mono mb-2 block pr-10">{entry.date}</span>
+                      {entry.text && <p className="text-base text-[rgb(var(--c-red-50))] whitespace-pre-wrap break-words leading-relaxed">{entry.text}</p>}
                       {entry.images?.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                           {entry.images.map((src, i) => (
                             <button key={i} type="button" onClick={() => setLightbox(src)} className="cursor-zoom-in">
-                              <img src={src} alt="Фото к записи" className="w-full h-28 sm:h-32 object-cover rounded-lg border border-white/20 hover:border-red-500 transition" />
+                              <img src={src} alt="Фото к записи" className="w-full h-28 sm:h-32 object-cover rounded-lg border border-[rgb(var(--c-white)/0.12)] hover:border-[rgb(var(--c-red-500))] transition" />
                             </button>
                           ))}
                         </div>
                       )}
                       <button
                         onClick={() => window.confirm('Удалить запись?') && setDiaryEntries(diaryEntries.filter((i) => i.id !== entry.id))}
-                        className={`${hoverShow} absolute top-3 right-3 p-2 text-zinc-500 hover:text-red-500 transition cursor-pointer`}
+                        className={`${hoverShow} absolute top-3 right-3 p-2 text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] transition cursor-pointer`}
                         aria-label="Удалить запись"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -553,57 +505,98 @@ function AppInner() {
 
         {/* ФИНАНСЫ */}
         {activeTab === 'finance' && (
-          <div className={`max-w-xl mx-auto ${card} p-4 sm:p-8 flex flex-col gap-5`}>
-            <h2 className="text-xl sm:text-2xl font-bold text-red-500">💳 Финансы</h2>
-
+          <>
+          <div className="max-w-xl mx-auto mb-3 flex items-center gap-2 px-3 py-2 rounded-xl border border-[rgb(var(--c-emerald-500)/0.3)] bg-[rgb(var(--c-emerald-950)/0.2)] text-[11px] text-[rgb(var(--c-emerald-100)/0.9)]">
+            <Lock className="w-3.5 h-3.5 shrink-0 text-[rgb(var(--c-emerald-400))]" />
+            <span>Данные хранятся только на этом устройстве. Никаких серверов. Копию можно сделать в «Пространство → Заметки».</span>
+          </div>
+          <div className={`max-w-xl mx-auto ${card} p-3 sm:p-5 flex flex-col gap-3`}>
+            <Widgets
+              storageKey="selfhq_order_finance"
+              className="flex flex-col gap-3"
+              header={<h2 className="flex items-center gap-2 text-xl font-semibold text-[rgb(var(--c-white))]"><CreditCard className="w-5 h-5 text-[rgb(var(--c-orange-500))]" /> Финансы</h2>}
+              items={[
+                { id: 'balance', title: 'Баланс', node: (
             <button
               type="button"
               onClick={() => setShowBalance(!showBalance)}
               aria-pressed={showBalance}
-              className="p-5 bg-black/70 border border-white/20 hover:border-white/40 rounded-2xl flex flex-col items-center shadow-inner cursor-pointer transition"
+              className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] hover:border-[rgb(var(--c-white)/0.25)] rounded-2xl flex flex-col items-center shadow-inner cursor-pointer transition"
             >
-              <span className="text-xs text-zinc-400 uppercase font-mono tracking-wider mb-1 flex items-center gap-1.5">
+              <span className="text-xs text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wider mb-1 flex items-center gap-1.5">
                 {showBalance ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} Общий баланс
               </span>
-              <span className={`text-3xl font-extrabold font-mono transition ${total >= 0 ? 'text-emerald-400' : 'text-red-400'} ${showBalance ? '' : 'blur-md select-none'}`}>{fmt(total)}</span>
-              {!showBalance && <span className="text-[11px] text-zinc-500 mt-1">Нажми, чтобы показать</span>}
+              <span className={`text-4xl sm:text-5xl font-bold font-mono tracking-tight transition ${total >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'} ${showBalance ? '' : 'blur-md select-none'}`}>{fmt(total)}</span>
+              {!showBalance && <span className="text-[11px] text-[rgb(var(--c-zinc-500))] mt-1">Нажми, чтобы показать</span>}
             </button>
-
-            <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex flex-col gap-2">
-              <div className="flex justify-between items-center gap-3 text-xs font-mono">
-                <span className="text-zinc-400 uppercase">Лимит на месяц</span>
+) },
+                { id: 'limit', title: 'Лимит и огоньки', node: (
+            <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.2)] rounded-2xl flex flex-col gap-2.5">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-[11px] text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wide">Лимит на месяц</span>
                 <input type="number" inputMode="numeric" value={limit || ''} onChange={(e) => setLimit(Math.max(0, Number(e.target.value) || 0))} placeholder="нет" className={`${input} w-28 py-1.5 text-right font-mono`} />
               </div>
               {limit > 0 && (
                 <>
-                  <div className="h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/20"><div className={`${limitColor} h-full transition-all`} style={{ width: `${Math.min(100, limitPct)}%` }} /></div>
-                  <p className={`text-xs ${limitPct >= 100 ? 'text-red-400' : limitPct >= 80 ? 'text-amber-300' : 'text-zinc-400'}`}>
-                    {limitPct >= 100 ? `⚠️ Лимит превышен на ${Math.round(monthSpent - limit)} ₸` : limitPct >= 80 ? `⚠️ Потрачено ${Math.round(limitPct)}% лимита, осталось ${Math.round(limit - monthSpent)} ₸` : `Потрачено ${monthSpent} из ${limit} ₸`}
+                  <div className="h-2 bg-[rgb(var(--c-zinc-900))] rounded-full overflow-hidden border border-[rgb(var(--c-white)/0.2)]"><div className={`${limitColor} h-full transition-all`} style={{ width: `${Math.min(100, limitPct)}%` }} /></div>
+                  <p className={`text-xs ${limitPct >= 100 ? 'text-[rgb(var(--c-rose-400))]' : limitPct >= 80 ? 'text-[rgb(var(--c-amber-300))]' : 'text-[rgb(var(--c-zinc-400))]'}`}>
+                    {limitPct >= 100 ? `Лимит превышен на ${Math.round(monthSpent - limit)} ₸` : limitPct >= 80 ? `Потрачено ${Math.round(limitPct)}% лимита, осталось ${Math.round(limit - monthSpent)} ₸` : `Потрачено ${monthSpent} из ${limit} ₸`}
                   </p>
                 </>
               )}
+              <div className="pt-2.5 border-t border-[rgb(var(--c-white)/0.1)] flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wide"><Flame className="w-3.5 h-3.5 text-[rgb(var(--c-orange-500))]" /> Огоньки</span>
+                  <span className="text-xs font-mono text-[rgb(var(--c-zinc-300))]">{monthLit}/{dimNow} <span className="text-[rgb(var(--c-zinc-500))]">· всего {streakData.flames || 0}</span></span>
+                </div>
+                {limit > 0 ? (
+                  <>
+                    <div className="flex flex-wrap gap-1" role="img" aria-label={`Огоньки месяца: ${monthLit} из ${dimNow}`}>
+                      {dayCells.map((c) => (
+                        <span key={c.iso} title={`${c.day}`} className={`w-5 h-5 grid place-items-center rounded-md ${c.state.startsWith('today') ? 'ring-1 ring-[rgb(var(--c-orange-500)/0.7)]' : ''}`}>
+                          {c.state === 'ok' ? <Flame className="w-4 h-4 text-[rgb(var(--c-orange-400))] fill-[rgb(var(--c-orange-500))]" /> : c.state === 'today-ok' ? <Flame className="w-4 h-4 text-[rgb(var(--c-orange-400)/0.7)]" /> : c.state === 'over' || c.state === 'today-over' ? <X className="w-3 h-3 text-[rgb(var(--c-rose-400)/0.7)]" /> : <span className="w-1 h-1 rounded-full bg-[rgb(var(--c-white)/0.2)]" />}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[rgb(var(--c-zinc-300))]">
+                      Сегодня {money(spentToday)} из {money(allowToday)}{' '}
+                      <span className={spentToday <= allowToday ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'}>{spentToday <= allowToday ? '· в рамках' : '· вышел за рамки'}</span>
+                    </p>
+                    <p className="text-[11px] text-[rgb(var(--c-zinc-500))]">
+                      День в рамках дневного лимита даёт огонёк и +{STREAK_XP} XP. Серия {streakData.streak} дн., рекорд {streakData.best}. Если месяц закончится в пределах лимита, огоньки за все его дни добавятся сразу (сейчас {dimNow}).
+                    </p>
+                    {lastMonth && (
+                      <p className="text-[11px] text-[rgb(var(--c-zinc-400))]">
+                        Прошлый месяц ({new Date(`${lastMonth.ym}-01T00:00`).toLocaleDateString('ru-RU', { month: 'long' })}): {lastMonth.ok ? `+${lastMonth.days} огоньков` : 'лимит не выдержан, огоньков нет'}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-[rgb(var(--c-zinc-500))]">Задай лимит на месяц, и огоньки заработают.</p>
+                )}
+              </div>
             </div>
-
-            {catSpent.length > 0 && (
-              <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex items-center gap-4">
-                <div className="w-24 h-24 shrink-0 rounded-full border border-white/20" style={{ background: `conic-gradient(${pie})` }} role="img" aria-label="Расходы по категориям за месяц" />
+) },
+                { id: 'categories', title: 'Траты по категориям', node: catSpent.length > 0 && (
+              <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex items-center gap-4">
+                <div className="w-24 h-24 shrink-0 rounded-full border border-[rgb(var(--c-white)/0.12)]" style={{ background: `conic-gradient(${pie})` }} role="img" aria-label="Расходы по категориям за месяц" />
                 <div className="flex flex-col gap-1 text-xs min-w-0">
-                  <span className="text-zinc-400 font-mono uppercase mb-1">Траты за месяц</span>
+                  <span className="text-[rgb(var(--c-zinc-400))] font-medium uppercase mb-1">Траты за месяц</span>
                   {catSpent.map((c) => (
-                    <span key={c.name} className="flex items-center gap-2 text-red-100">
+                    <span key={c.name} className="flex items-center gap-2 text-[rgb(var(--c-red-100))]">
                       <i className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.color }} />
                       <span className="truncate">{c.name}</span>
-                      <span className="font-mono text-zinc-400 ml-auto pl-2">{c.value} ₸</span>
+                      <span className="font-mono text-[rgb(var(--c-zinc-400))] ml-auto pl-2">{c.value} ₸</span>
                     </span>
                   ))}
                 </div>
               </div>
-            )}
-
-            <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex flex-col gap-3">
+            ) },
+                { id: 'piggy', title: 'Копилка', node: (
+            <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-zinc-400 font-mono uppercase">🐷 Копилка</span>
-                <span className="font-mono font-bold text-amber-300">{piggyTotal} ₸</span>
+                <span className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wide"><PiggyBank className="w-3.5 h-3.5 text-[rgb(var(--c-orange-500))]" /> Копилка</span>
+                <span className="font-mono font-bold text-[rgb(var(--c-amber-300))]">{piggyTotal} ₸</span>
               </div>
               <div className="flex gap-2">
                 <input type="text" value={piggy.goalName} onChange={(e) => setPiggy({ ...piggy, goalName: e.target.value })} placeholder="Цель (ноутбук)" className={`${input} flex-1 min-w-0`} />
@@ -611,106 +604,33 @@ function AppInner() {
               </div>
               {piggy.goal > 0 && (
                 <div>
-                  <div className="h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/20"><div className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full transition-all" style={{ width: `${piggyPct}%` }} /></div>
-                  <p className="text-xs text-zinc-400 mt-1">{piggy.goalName || 'Цель'}: {Math.round(piggyPct)}% · {piggyTotal >= piggy.goal ? 'цель достигнута 🎉' : `осталось ${piggy.goal - piggyTotal} ₸`}</p>
+                  <div className="h-2.5 bg-[rgb(var(--c-zinc-900))] rounded-full overflow-hidden border border-[rgb(var(--c-white)/0.12)]"><div className="bg-gradient-to-r from-[rgb(var(--c-amber-500))] to-[rgb(var(--c-emerald-400))] h-full transition-all" style={{ width: `${piggyPct}%` }} /></div>
+                  <p className="text-xs text-[rgb(var(--c-zinc-400))] mt-1">{piggy.goalName || 'Цель'}: {Math.round(piggyPct)}% · {piggyTotal >= piggy.goal ? 'цель достигнута' : `осталось ${piggy.goal - piggyTotal} ₸`}</p>
                 </div>
               )}
               <form onSubmit={(e) => { e.preventDefault(); piggyMove(1); }} className="flex gap-2">
                 <input type="text" inputMode="decimal" value={piggyAmount} onChange={(e) => setPiggyAmount(e.target.value)} placeholder="Сумма, ₸" className={`${input} flex-1 min-w-0 font-mono`} />
-                <button type="submit" className="px-3 bg-emerald-600 text-white rounded-xl text-sm font-medium cursor-pointer">Положить</button>
-                <button type="button" onClick={() => piggyMove(-1)} className="px-3 bg-red-600 text-white rounded-xl text-sm font-medium cursor-pointer">Снять</button>
+                <button type="submit" className="px-3 bg-[rgb(var(--c-emerald-600))] text-white rounded-xl text-sm font-medium cursor-pointer">Положить</button>
+                <button type="button" onClick={() => piggyMove(-1)} className="px-3 bg-[rgb(var(--c-rose-600))] text-white rounded-xl text-sm font-medium cursor-pointer">Снять</button>
               </form>
               {piggy.items.slice(0, 5).map((it) => (
                 <div key={it.id} className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-zinc-500">{it.date}</span>
-                  <span className={it.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}>{fmt(it.amount)}</span>
-                  <button onClick={() => setPiggy({ ...piggy, items: piggy.items.filter((x) => x.id !== it.id) })} className="p-1 text-zinc-500 hover:text-red-500 cursor-pointer" aria-label="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <span className="text-[rgb(var(--c-zinc-500))]">{it.date}</span>
+                  <span className={it.amount >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'}>{fmt(it.amount)}</span>
+                  <button onClick={() => setPiggy({ ...piggy, items: piggy.items.filter((x) => x.id !== it.id) })} className="p-1 text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] cursor-pointer" aria-label="Удалить"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               ))}
             </div>
-
-            <div className="p-4 bg-black/70 border border-white/20 rounded-2xl flex flex-col gap-3">
-              <button type="button" onClick={() => setSbOpen(!sbOpen)} aria-expanded={sbOpen} className="flex justify-between items-center text-xs text-zinc-400 font-mono uppercase cursor-pointer">
-                <span>🧪 Песочница «что если?»</span>
-                <span className="text-base leading-none">{sbOpen ? '−' : '+'}</span>
-              </button>
-
-              {sbOpen && (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[['save', 'Накопить'], ['grow', 'Рост дохода']].map(([id, label]) => (
-                      <button key={id} type="button" onClick={() => setSbField('mode', id)} className={`py-2 rounded-xl border text-xs font-medium cursor-pointer transition ${sb.mode === id ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {sb.mode === 'save' ? (
-                    <>
-                      <p className="text-xs text-zinc-400">Если откладывать сумму каждую неделю, когда накоплю нужное?</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {sbField('goal', 'Цель, ₸')}
-                        {sbField('have', 'Уже есть, ₸')}
-                      </div>
-                      {sbField('weekly', 'Откладываю в неделю, ₸')}
-                      {(piggy.goal > 0 || piggyTotal > 0) && (
-                        <button type="button" onClick={() => setSb({ ...sb, goal: piggy.goal ? String(piggy.goal) : sb.goal, have: String(piggyTotal) })} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Взять цель и сумму из копилки</button>
-                      )}
-                      <div className="p-3 bg-black/60 border border-white/10 rounded-xl text-xs font-mono">
-                        {num(sb.goal) <= 0 ? (
-                          <span className="text-zinc-500">Введи цель и сумму в неделю.</span>
-                        ) : sbLeft === 0 ? (
-                          <span className="text-emerald-400">Цель уже достигнута 🎉</span>
-                        ) : sbWeeks === null ? (
-                          <span className="text-zinc-500">Осталось накопить {money(sbLeft)}. Введи, сколько откладываешь в неделю.</span>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            <span className="text-zinc-400">Осталось накопить: <span className="text-red-100">{money(sbLeft)}</span></span>
-                            <span className="text-amber-300 font-bold text-sm">Через {sbWeeks} нед. (≈ {(sbWeeks / 4.345).toFixed(1)} мес.)</span>
-                            <span className="text-zinc-400">Примерно к {sbDate.toLocaleDateString('ru-RU')}</span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs text-zinc-400">Если доход вырастет на Y%, сколько свободных денег будет к концу года?</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {sbField('income', 'Доход в месяц, ₸', '0', sb.fromMonth)}
-                        {sbField('spend', 'Расходы в месяц, ₸', '0', sb.fromMonth)}
-                        {sbField('growth', 'Рост дохода, %', '10')}
-                        {sbField('balance', 'Баланс сейчас, ₸', '0', sb.fromMonth)}
-                      </div>
-                      <button type="button" onClick={() => setSb({ ...sb, income: String(totals.month.income), spend: String(totals.month.expense), balance: String(total), fromMonth: true })} className="text-[11px] text-zinc-400 hover:text-white underline text-left cursor-pointer">Взять из текущего месяца (месяц может быть неполным)</button>
-                      {sb.fromMonth && (
-                        <p role="alert" className="flex items-start gap-1.5 text-[11px] text-amber-300 bg-amber-400/10 border border-amber-400/40 rounded-lg p-2">
-                          <span>⚠️</span>
-                          <span>Внимание: месяц ещё не закончился, данные спрогнозированы или взяты как есть.</span>
-                        </p>
-                      )}
-                      <div className={`p-3 bg-black/60 border rounded-xl text-xs font-mono flex flex-col gap-1.5 ${sb.fromMonth ? 'border-amber-400/50' : 'border-white/10'}`}>
-                        <div className="flex justify-between gap-2"><span className="text-zinc-400">Свободно в месяц сейчас</span><span className={sign(sbBase)}>{money(sbBase)}</span></div>
-                        <div className="flex justify-between gap-2"><span className="text-zinc-400">После роста</span><span className={sign(sbGrown)}>{money(sbGrown)}</span></div>
-                        <div className="flex justify-between gap-2 pt-1.5 border-t border-white/10"><span className="text-zinc-400">К концу года без роста</span><span className={sign(sbEndBase)}>{money(sbEndBase)}</span></div>
-                        <div className="flex justify-between gap-2"><span className="text-zinc-400">К концу года с ростом</span><span className={`${sign(sbEndGrown)} font-bold`}>{money(sbEndGrown)}</span></div>
-                        <div className="flex justify-between gap-2"><span className="text-zinc-400">Разница</span><span className={sign(sbEndGrown - sbEndBase)}>{sbEndGrown - sbEndBase >= 0 ? '+' : '−'}{money(Math.abs(sbEndGrown - sbEndBase))}</span></div>
-                        <span className="text-[10px] text-zinc-500">Считается {monthsLeft} мес. до конца года, включая текущий.</span>
-                      </div>
-                    </>
-                  )}
-                  <p className="text-[11px] text-zinc-500">Это только расчёт: твои данные учёта не меняются.</p>
-                </>
-              )}
-            </div>
-
+) },
+                { id: 'reports', title: 'Выписки', node: (
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-zinc-400 font-mono uppercase">Выписки:</span>
+              <span className="text-xs text-[rgb(var(--c-zinc-400))] font-medium uppercase">Выписки:</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {reportButtons.map(([id, label]) => (
                   <button
                     key={id}
                     onClick={() => setActiveReport(activeReport === id ? 'none' : id)}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === id ? 'bg-red-600 border-red-500 text-white font-bold' : 'bg-black/40 border-white/20 text-red-200 hover:border-white/50'}`}
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${activeReport === id ? 'bg-[rgb(var(--c-red-600))] border-[rgb(var(--c-red-500))] text-white font-bold' : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-red-200))] hover:border-[rgb(var(--c-white)/0.5)]'}`}
                   >
                     {label}
                   </button>
@@ -718,28 +638,28 @@ function AppInner() {
               </div>
 
               {activeReport !== 'none' && (
-                <div className="p-4 bg-black/80 border border-red-500/40 rounded-xl flex flex-col gap-2 font-mono">
-                  <span className="text-xs text-zinc-300">{reportLabels[activeReport]}</span>
-                  {activeReport === 'month' && (
-                    <p role="alert" className="flex items-start gap-1.5 text-[11px] text-amber-300 bg-amber-400/10 border border-amber-400/40 rounded-lg p-2 font-sans">
-                      <span>⚠️</span>
-                      <span>Внимание: месяц ещё не закончился, данные взяты как есть.</span>
+                <div className="p-3 bg-[rgb(var(--c-black)/0.8)] border border-[rgb(var(--c-red-500)/0.4)] rounded-xl flex flex-col gap-2 font-mono">
+                  <span className="text-xs text-[rgb(var(--c-zinc-300))]">{reportLabels[activeReport]}</span>
+                  {(activeReport === 'month' || activeReport === 'year') && (
+                    <p role="alert" className="flex items-start gap-1.5 text-[11px] text-[rgb(var(--c-amber-300))] bg-[rgb(var(--c-amber-400)/0.1)] border border-[rgb(var(--c-amber-400)/0.4)] rounded-lg p-2 font-sans">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                      <span>Внимание: {activeReport === 'month' ? 'месяц' : 'год'} ещё не закончился, данные взяты как есть.</span>
                     </p>
                   )}
-                  <div className="flex justify-between text-sm"><span className="text-zinc-400">Поднял (доход)</span><span className="text-emerald-400 font-bold">+{totals[activeReport].income} ₸</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-400">Потратил</span><span className="text-red-400 font-bold">−{totals[activeReport].expense} ₸</span></div>
-                  <div className="flex justify-between text-sm pt-2 border-t border-white/10">
-                    <span className="text-zinc-300">Итого</span>
-                    <span className={`font-bold ${totals[activeReport].net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(totals[activeReport].net)}</span>
+                  <div className="flex justify-between text-sm"><span className="text-[rgb(var(--c-zinc-400))]">Поднял (доход)</span><span className="text-[rgb(var(--c-emerald-400))] font-bold">+{totals[activeReport].income} ₸</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[rgb(var(--c-zinc-400))]">Потратил</span><span className="text-[rgb(var(--c-rose-400))] font-bold">−{totals[activeReport].expense} ₸</span></div>
+                  <div className="flex justify-between text-sm pt-2 border-t border-[rgb(var(--c-white)/0.1)]">
+                    <span className="text-[rgb(var(--c-zinc-300))]">Итого</span>
+                    <span className={`font-bold ${totals[activeReport].net >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'}`}>{fmt(totals[activeReport].net)}</span>
                   </div>
                   {activeReport !== 'day' && periodItems[activeReport].length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
-                      <span className="text-[10px] text-orange-400 uppercase tracking-wider">По дням</span>
+                    <div className="mt-2 pt-2 border-t border-[rgb(var(--c-white)/0.1)] flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+                      <span className="text-[10px] text-[rgb(var(--c-orange-400))] uppercase tracking-wider">По дням</span>
                       {byDay(periodItems[activeReport]).map((d) => (
                         <div key={d.date} className="flex justify-between gap-2 text-[11px]">
-                          <span className="text-zinc-400">{d.date}</span>
-                          <span className="text-emerald-400">{d.income ? `+${r2(d.income)}` : '·'}</span>
-                          <span className="text-red-400">{d.expense ? `−${r2(d.expense)}` : '·'}</span>
+                          <span className="text-[rgb(var(--c-zinc-400))]">{d.date}</span>
+                          <span className="text-[rgb(var(--c-emerald-400))]">{d.income ? `+${r2(d.income)}` : '·'}</span>
+                          <span className="text-[rgb(var(--c-rose-400))]">{d.expense ? `−${r2(d.expense)}` : '·'}</span>
                         </div>
                       ))}
                     </div>
@@ -750,7 +670,8 @@ function AppInner() {
                 <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={`${input} font-mono`} />
               )}
             </div>
-
+) },
+                { id: 'add', title: 'Новая запись', node: (
             <form onSubmit={addMoney} className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
                 {[['expense', 'Расход'], ['income', 'Доход']].map(([id, label]) => (
@@ -758,7 +679,7 @@ function AppInner() {
                     key={id}
                     type="button"
                     onClick={() => setKind(id)}
-                    className={`py-2.5 rounded-xl border text-sm font-medium cursor-pointer transition ${kind === id ? (id === 'expense' ? 'bg-red-600 border-red-500 text-white' : 'bg-emerald-600 border-emerald-500 text-white') : 'bg-black/40 border-white/20 text-zinc-300'}`}
+                    className={`py-2 rounded-xl border text-sm font-medium cursor-pointer transition ${kind === id ? (id === 'expense' ? 'bg-[rgb(var(--c-rose-600))] border-[rgb(var(--c-rose-500))] text-white' : 'bg-[rgb(var(--c-emerald-600))] border-[rgb(var(--c-emerald-500))] text-white') : 'bg-[rgb(var(--c-black)/0.4)] border-[rgb(var(--c-white)/0.12)] text-[rgb(var(--c-zinc-300))]'}`}
                   >
                     {label}
                   </button>
@@ -771,36 +692,75 @@ function AppInner() {
               )}
               <div className="flex gap-2">
                 <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Сумма, ₸" className={`${input} flex-1 min-w-0 font-mono`} />
-                <button type="submit" className={`px-5 py-2.5 ${grad} rounded-xl text-sm hover:opacity-90 cursor-pointer whitespace-nowrap`}>Записать</button>
+                <button type="submit" className={`px-5 py-2 ${grad} rounded-xl text-sm hover:opacity-90 cursor-pointer whitespace-nowrap`}>Записать</button>
               </div>
-              <p className="text-[11px] text-zinc-500">Дата записи: {selectedDate} (меняется в разделе «По дням»)</p>
+              <input type="text" value={moneyNote} onChange={(e) => setMoneyNote(e.target.value)} maxLength={120} placeholder="Заметка к записи (гарантия до…, магазин, зачем)" className={input} />
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-[rgb(var(--c-red-200))] bg-[rgb(var(--c-black)/0.6)] border border-[rgb(var(--c-white)/0.18)] hover:border-[rgb(var(--c-white)/0.6)] rounded-lg px-3 py-2 cursor-pointer">
+                  <ImagePlus className="w-4 h-4" /> Чек или фото покупки
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      try {
+                        setMoneyPhoto(await fitToDataUrl(f));
+                      } catch {
+                        alert('Не удалось открыть картинку');
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                {moneyPhoto && (
+                  <div className="relative w-12 h-12">
+                    <img src={moneyPhoto} alt="" className="w-full h-full object-cover rounded-lg border border-[rgb(var(--c-white)/0.18)]" />
+                    <button type="button" onClick={() => setMoneyPhoto('')} className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-[rgb(var(--c-red-600))] text-white cursor-pointer" aria-label="Убрать фото"><X className="w-3 h-3" /></button>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-[rgb(var(--c-zinc-500))]">Дата записи: {selectedDate} (меняется в разделе «По дням»)</p>
             </form>
-
+) },
+                { id: 'ops', title: 'Все операции', node: (
             <div className="flex flex-col gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-              <div className="text-xs text-orange-400 font-mono uppercase tracking-wider">Все операции:</div>
+              <div className="text-xs text-[rgb(var(--c-orange-400))] font-medium uppercase tracking-wider">Все операции:</div>
               {all.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic text-center py-4">Операций пока нет.</p>
+                <p className="text-xs text-[rgb(var(--c-zinc-500))] italic text-center py-4">Операций пока нет.</p>
               ) : (
                 all.map((item) => (
-                  <div key={item.id} className="p-3 bg-black/50 border border-white/20 rounded-xl flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className={`font-mono font-semibold text-sm ${item.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmt(item.amount)}</span>
-                      <span className="text-[11px] text-zinc-500 font-mono">{item.date || 'Без даты'}{item.category ? ` · ${item.category}` : ''}</span>
+                  <div key={item.id} className="p-3 bg-[rgb(var(--c-black)/0.5)] border border-[rgb(var(--c-white)/0.12)] rounded-xl flex justify-between items-center">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className={`font-mono font-semibold text-sm ${item.amount >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'}`}>{fmt(item.amount)}</span>
+                      <span className="text-[11px] text-[rgb(var(--c-zinc-500))] font-mono">{item.date || 'Без даты'}{item.category ? ` · ${item.category}` : ''}</span>
+                      {item.note && <span className="text-xs text-[rgb(var(--c-zinc-300))] break-words mt-0.5">{item.note}</span>}
                     </div>
-                    <button onClick={() => deleteMoney(item.id)} className="text-zinc-500 hover:text-red-500 transition cursor-pointer p-2" aria-label="Удалить операцию">
+                    {item.photo && (
+                      <button type="button" onClick={() => setLightbox(item.photo)} className="shrink-0 mr-1 cursor-zoom-in" aria-label="Открыть фото">
+                        <img src={item.photo} alt="Чек или покупка" className="w-10 h-10 object-cover rounded-lg border border-[rgb(var(--c-white)/0.12)]" />
+                      </button>
+                    )}
+                    <button onClick={() => deleteMoney(item.id)} className="text-[rgb(var(--c-zinc-500))] hover:text-[rgb(var(--c-red-500))] transition cursor-pointer p-2" aria-label="Удалить операцию">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))
               )}
             </div>
+) },
+              ]}
+            />
           </div>
+          </>
         )}
+        {activeTab === 'space' && <Space piggyGoal={piggy.goal} piggyTotal={piggyTotal} month={totals.month} balance={total} />}
       </main>
 
       {lightbox && (
         <div className="fixed inset-0 z-50 bg-black/90 grid place-items-center p-4 cursor-zoom-out" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="Фото" className="max-w-full max-h-full rounded-xl border border-white/30 shadow-[0_0_30px_rgba(220,38,38,0.35)]" />
+          <img src={lightbox} alt="Фото" className="max-w-full max-h-full rounded-xl border border-[rgb(var(--c-white)/0.18)] shadow-2xl" />
         </div>
       )}
     </div>
