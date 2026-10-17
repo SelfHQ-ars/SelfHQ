@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlaskConical, AlertTriangle } from 'lucide-react';
+import { FlaskConical, TriangleAlert } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { input, money } from './ui';
 
@@ -90,7 +90,7 @@ export default function Sandbox({ piggyGoal = 0, piggyTotal = 0, month = { incom
                       <button type="button" onClick={() => setSb({ ...sb, income: String(month.income), spend: String(month.expense), balance: String(balance), fromMonth: true })} className="text-[11px] text-[rgb(var(--c-zinc-400))] hover:text-[rgb(var(--c-white))] underline text-left cursor-pointer">Взять из текущего месяца (месяц может быть неполным)</button>
                       {sb.fromMonth && (
                         <p role="alert" className="flex items-start gap-1.5 text-[11px] text-[rgb(var(--c-amber-300))] bg-[rgb(var(--c-amber-400)/0.1)] border border-[rgb(var(--c-amber-400)/0.4)] rounded-lg p-2">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                          <TriangleAlert className="w-3.5 h-3.5 shrink-0 mt-px" />
                           <span>Внимание: месяц ещё не закончился, данные спрогнозированы или взяты как есть.</span>
                         </p>
                       )}

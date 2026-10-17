@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookText, Trash2, Sparkles, Wallet, ImagePlus, X, Eye, EyeOff, LayoutGrid, CreditCard, PiggyBank, Flame, Lock, AlertTriangle } from 'lucide-react';
+import { BookText, Trash2, Sparkles, Wallet, ImagePlus, X, Eye, EyeOff, LayoutGrid, CreditCard, PiggyBank, Flame, Lock, TriangleAlert } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { card, input, grad, fitToDataUrl, localISO, money } from './ui';
 import ProfileHeader from './ProfileHeader';
@@ -521,12 +521,12 @@ function AppInner() {
               type="button"
               onClick={() => setShowBalance(!showBalance)}
               aria-pressed={showBalance}
-              className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] hover:border-[rgb(var(--c-white)/0.25)] rounded-2xl flex flex-col items-center shadow-inner cursor-pointer transition"
+              className="w-full p-4 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] hover:border-[rgb(var(--c-white)/0.25)] rounded-2xl flex flex-col items-center justify-center text-center shadow-inner cursor-pointer transition"
             >
-              <span className="text-xs text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wider mb-1 flex items-center gap-1.5">
+              <span className="text-xs text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wider mb-1.5 flex items-center justify-center gap-1.5">
                 {showBalance ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} Общий баланс
               </span>
-              <span className={`text-4xl sm:text-5xl font-bold font-mono tracking-tight transition ${total >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'} ${showBalance ? '' : 'blur-md select-none'}`}>{fmt(total)}</span>
+              <span className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight transition ${total >= 0 ? 'text-[rgb(var(--c-emerald-400))]' : 'text-[rgb(var(--c-rose-400))]'} ${showBalance ? '' : 'blur-md select-none'}`}>{fmt(total)}</span>
               {!showBalance && <span className="text-[11px] text-[rgb(var(--c-zinc-500))] mt-1">Нажми, чтобы показать</span>}
             </button>
 ) },
@@ -578,25 +578,37 @@ function AppInner() {
             </div>
 ) },
                 { id: 'categories', title: 'Траты по категориям', node: catSpent.length > 0 && (
-              <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex items-center gap-4">
-                <div className="w-24 h-24 shrink-0 rounded-full border border-[rgb(var(--c-white)/0.12)]" style={{ background: `conic-gradient(${pie})` }} role="img" aria-label="Расходы по категориям за месяц" />
-                <div className="flex flex-col gap-1 text-xs min-w-0">
-                  <span className="text-[rgb(var(--c-zinc-400))] font-medium uppercase mb-1">Траты за месяц</span>
-                  {catSpent.map((c) => (
-                    <span key={c.name} className="flex items-center gap-2 text-[rgb(var(--c-red-100))]">
-                      <i className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.color }} />
-                      <span className="truncate">{c.name}</span>
-                      <span className="font-mono text-[rgb(var(--c-zinc-400))] ml-auto pl-2">{c.value} ₸</span>
-                    </span>
-                  ))}
+              <div className="p-5 bg-[rgb(var(--c-black)/0.75)] border border-[rgb(var(--c-white)/0.15)] rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-5 shadow-xl">
+                <div className="relative w-28 h-28 shrink-0 rounded-full border-4 border-[rgb(var(--c-white)/0.1)] shadow-inner overflow-hidden flex items-center justify-center">
+                  <div className="absolute inset-0" style={{ background: `conic-gradient(${pie})` }} role="img" aria-label="Расходы по категориям за месяц" />
+                  <div className="absolute inset-4 bg-[rgb(var(--c-zinc-950))] rounded-full flex flex-col items-center justify-center text-center shadow-md">
+                    <span className="text-[10px] uppercase tracking-wider text-[rgb(var(--c-zinc-400))] font-semibold">Всего</span>
+                    <span className="text-xs font-bold font-mono text-[rgb(var(--c-white))]">{catTotal} ₸</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 text-xs min-w-0 w-full flex-1">
+                  <span className="text-[rgb(var(--c-zinc-400))] font-semibold uppercase tracking-wider mb-1">Траты за месяц</span>
+                  {catSpent.map((c) => {
+                    const pct = Math.round((c.value / catTotal) * 100);
+                    return (
+                      <div key={c.name} className="flex items-center gap-2 text-[rgb(var(--c-red-100))]">
+                        <i className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: c.color }} />
+                        <span className="truncate font-medium">{c.name}</span>
+                        <span className="font-mono text-[rgb(var(--c-zinc-300))] ml-auto">{c.value} ₸</span>
+                        <span className="font-mono text-[rgb(var(--c-zinc-500))] w-8 text-right">{pct}%</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) },
                 { id: 'piggy', title: 'Копилка', node: (
-            <div className="p-3 bg-[rgb(var(--c-black)/0.7)] border border-[rgb(var(--c-white)/0.12)] rounded-2xl flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--c-zinc-400))] uppercase font-medium tracking-wide"><PiggyBank className="w-3.5 h-3.5 text-[rgb(var(--c-orange-500))]" /> Копилка</span>
-                <span className="font-mono font-bold text-[rgb(var(--c-amber-300))]">{piggyTotal} ₸</span>
+            <div className="p-5 bg-[rgb(var(--c-black)/0.75)] border border-[rgb(var(--c-white)/0.15)] rounded-2xl flex flex-col gap-3.5 shadow-xl">
+              <div className="flex flex-col items-center justify-center text-center pb-2 border-b border-[rgb(var(--c-white)/0.1)]">
+                <span className="flex items-center gap-1.5 text-xs text-[rgb(var(--c-zinc-400))] uppercase font-semibold tracking-wider mb-1">
+                  <PiggyBank className="w-4 h-4 text-[rgb(var(--c-orange-500))]" /> Копилка
+                </span>
+                <span className="font-mono text-2xl sm:text-3xl font-bold text-[rgb(var(--c-amber-300))] tracking-tight">{piggyTotal} ₸</span>
               </div>
               <div className="flex gap-2">
                 <input type="text" value={piggy.goalName} onChange={(e) => setPiggy({ ...piggy, goalName: e.target.value })} placeholder="Цель (ноутбук)" className={`${input} flex-1 min-w-0`} />
@@ -642,7 +654,7 @@ function AppInner() {
                   <span className="text-xs text-[rgb(var(--c-zinc-300))]">{reportLabels[activeReport]}</span>
                   {(activeReport === 'month' || activeReport === 'year') && (
                     <p role="alert" className="flex items-start gap-1.5 text-[11px] text-[rgb(var(--c-amber-300))] bg-[rgb(var(--c-amber-400)/0.1)] border border-[rgb(var(--c-amber-400)/0.4)] rounded-lg p-2 font-sans">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                      <TriangleAlert className="w-3.5 h-3.5 shrink-0 mt-px" />
                       <span>Внимание: {activeReport === 'month' ? 'месяц' : 'год'} ещё не закончился, данные взяты как есть.</span>
                     </p>
                   )}
