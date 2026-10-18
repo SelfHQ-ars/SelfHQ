@@ -1,9 +1,10 @@
 import React from 'react';
-import { StickyNote, Shirt, Film, Table } from 'lucide-react';
+import { StickyNote, Shirt, Film, Table, PiggyBank } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Notes from './Notes';
 import Wardrobe from './Wardrobe';
 import MediaList from './MediaList';
+import Piggy from './Piggy';
 import Sandbox from './Sandbox';
 import PriceCompare from './PriceCompare';
 import Widgets from './Widgets';
@@ -13,10 +14,11 @@ const SECTIONS = [
   ['notes', 'Заметки', StickyNote],
   ['wardrobe', 'Гардероб', Shirt],
   ['media', 'Медиа', Film],
+  ['piggy', 'Копилка', PiggyBank],
   ['excel', 'Excel', Table]
 ];
 
-// «Пространство»: заметки, гардероб, медиа и Excel-инструменты в одной вкладке
+// «Пространство»: заметки, гардероб, медиа, копилка и Excel-инструменты в одной вкладке
 export default function Space() {
   const [saved, setSection] = useLocalStorage('selfhq_space_tab', 'notes');
   const section = SECTIONS.some((s) => s[0] === saved) ? saved : 'notes';
@@ -47,6 +49,11 @@ export default function Space() {
       {section === 'notes' && <Notes />}
       {section === 'wardrobe' && <Wardrobe />}
       {section === 'media' && <MediaList />}
+      {section === 'piggy' && (
+        <div className={`max-w-xl w-full mx-auto ${card} p-3 sm:p-5`}>
+          <Piggy />
+        </div>
+      )}
       {section === 'excel' && (
         <div className={`max-w-xl w-full mx-auto ${card} p-3 sm:p-5 flex flex-col gap-3`}>
           <Widgets

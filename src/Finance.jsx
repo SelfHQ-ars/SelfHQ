@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Eye, EyeOff, Flame, Lock, TriangleAlert, Trash2, ImagePlus, X, Tag, Search, Gauge } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Widgets from './Widgets';
-import Piggy from './Piggy';
 import { card, input, label, panel, btnPrimary, btnSecondary, btnIcon, segWrap, seg, Title, fitToDataUrl, localISO, money, sum, num2, fmt } from './kit';
 
 const CATEGORIES = [
@@ -267,52 +266,52 @@ export default function Finance({ gainXp, onPhoto }) {
               id: 'limit',
               title: 'Лимит и огоньки',
               node: (
-                <div className={`${panel} flex flex-col gap-3`}>
+                <div className={`${panel} !p-3 flex flex-col gap-2`}>
                   <div className="flex justify-between items-center gap-3">
                     <Title icon={Gauge}>Лимит на месяц</Title>
-                    <input type="number" inputMode="numeric" value={limit || ''} onChange={(e) => setLimit(Math.max(0, Number(e.target.value) || 0))} placeholder="не задан" className={`${input} w-32 py-1.5 text-right font-mono`} />
+                    <input type="number" inputMode="numeric" value={limit || ''} onChange={(e) => setLimit(Math.max(0, Number(e.target.value) || 0))} placeholder="не задан" className={`${input} w-28 !py-1 text-right font-mono`} />
                   </div>
                   {limit > 0 && (
                     <>
                       <div>
                         <div className="h-2 bg-[rgb(var(--c-zinc-900))] rounded-full overflow-hidden border border-[rgb(var(--c-white)/0.12)]"><div className={`${toneBar} h-full transition-all`} style={{ width: `${Math.min(100, limitPct)}%` }} /></div>
-                        <div className="flex justify-between mt-1.5 text-xs font-mono tabular-nums">
+                        <div className="flex justify-between mt-1 text-[11px] font-mono tabular-nums">
                           <span className="text-[rgb(var(--c-zinc-300))]">Потрачено {money(monthSpent)} <span className={toneText}>({Math.round(limitPct)}%)</span></span>
                           <span className={limitPct >= 100 ? 'text-[rgb(var(--c-rose-400))]' : 'text-[rgb(var(--c-zinc-400))]'}>{limitPct >= 100 ? `Сверх на ${money(monthSpent - limit)}` : `Осталось ${money(leftToSpend)}`}</span>
                         </div>
                       </div>
-                      <div className="text-xs text-[rgb(var(--c-zinc-300))] leading-relaxed">
-                        {limitPct < 100 && <p>До конца месяца в среднем <b className="font-mono">{money(perDayLeft)}</b> в день, но тратить можно неравномерно: важен общий итог.</p>}
+                      <div className="text-[11px] text-[rgb(var(--c-zinc-300))] leading-snug">
+                        {limitPct < 100 && <p>До конца месяца ≈ <b className="font-mono">{money(perDayLeft)}</b> в день, можно неравномерно.</p>}
                         {dayNum >= 3 && (
                           <p className={forecastOver ? 'text-[rgb(var(--c-amber-300))]' : 'text-[rgb(var(--c-zinc-400))]'}>
-                            При текущем темпе к концу месяца выйдет ≈ {money(forecast)}{forecastOver ? `, это на ${money(forecast - limit)} больше лимита.` : ', в пределах лимита.'}
+                            Прогноз на конец месяца ≈ {money(forecast)}{forecastOver ? `, это на ${money(forecast - limit)} выше лимита` : ', в пределах лимита'}
                           </p>
                         )}
                       </div>
                     </>
                   )}
-                  <div className="pt-3 border-t border-[rgb(var(--c-white)/0.1)] flex flex-col gap-2">
-                    <Title icon={Flame} right={<span className="text-xs font-mono text-[rgb(var(--c-zinc-300))]">{monthLit}/{dimNow} <span className="text-[rgb(var(--c-zinc-500))]">· всего {streakData.flames || 0}</span></span>}>Огоньки</Title>
+                  <div className="pt-2 border-t border-[rgb(var(--c-white)/0.1)] flex flex-col gap-1.5">
+                    <Title icon={Flame} right={<span className="text-[11px] font-mono text-[rgb(var(--c-zinc-300))]">{monthLit}/{dimNow} <span className="text-[rgb(var(--c-zinc-500))]">· всего {streakData.flames || 0}</span></span>}>Огоньки</Title>
                     {limit > 0 ? (
                       <>
-                        <div className="flex flex-wrap gap-1" role="img" aria-label={`Огоньки месяца: ${monthLit} из ${dimNow}`}>
+                        <div className="flex flex-wrap gap-0.5" role="img" aria-label={`Огоньки месяца: ${monthLit} из ${dimNow}`}>
                           {dayCells.map((c) => (
-                            <span key={c.iso} title={`${c.day}`} className={`w-5 h-5 grid place-items-center rounded-md ${c.state.startsWith('today') ? 'ring-1 ring-[rgb(var(--c-orange-500)/0.7)]' : ''}`}>
-                              {c.state === 'ok' ? <Flame className="w-4 h-4 text-[rgb(var(--c-orange-400))] fill-[rgb(var(--c-orange-500))]" /> : c.state === 'today-ok' ? <Flame className="w-4 h-4 text-[rgb(var(--c-orange-400)/0.7)]" /> : c.state === 'over' || c.state === 'today-over' ? <X className="w-3 h-3 text-[rgb(var(--c-rose-400)/0.7)]" /> : <span className="w-1 h-1 rounded-full bg-[rgb(var(--c-white)/0.2)]" />}
+                            <span key={c.iso} title={`${c.day}`} className={`w-4 h-4 grid place-items-center rounded ${c.state.startsWith('today') ? 'ring-1 ring-[rgb(var(--c-orange-500)/0.7)]' : ''}`}>
+                              {c.state === 'ok' ? <Flame className="w-3.5 h-3.5 text-[rgb(var(--c-orange-400))] fill-[rgb(var(--c-orange-500))]" /> : c.state === 'today-ok' ? <Flame className="w-3.5 h-3.5 text-[rgb(var(--c-orange-400)/0.7)]" /> : c.state === 'over' || c.state === 'today-over' ? <X className="w-2.5 h-2.5 text-[rgb(var(--c-rose-400)/0.7)]" /> : <span className="w-1 h-1 rounded-full bg-[rgb(var(--c-white)/0.2)]" />}
                             </span>
                           ))}
                         </div>
-                        <p className="text-[11px] text-[rgb(var(--c-zinc-500))] leading-relaxed">
-                          Огонёк и +{STREAK_XP} XP за каждый день, пока расходы месяца не превысили лимит. Серия {streakData.streak} дн., рекорд {streakData.best}. Если месяц закончится в лимите, огоньки за все его дни (сейчас {dimNow}) добавятся сразу.
+                        <p className="text-[10px] text-[rgb(var(--c-zinc-500))] leading-snug">
+                          Огонёк и +{STREAK_XP} XP за каждый день в рамках лимита. Серия {streakData.streak} дн., рекорд {streakData.best}. Месяц в лимите даёт сразу все огоньки (сейчас {dimNow}).
                         </p>
                         {lastMonth && (
-                          <p className="text-[11px] text-[rgb(var(--c-zinc-400))]">
+                          <p className="text-[10px] text-[rgb(var(--c-zinc-400))]">
                             Прошлый месяц ({new Date(`${lastMonth.ym}-01T00:00`).toLocaleDateString('ru-RU', { month: 'long' })}): {lastMonth.ok ? `+${lastMonth.days} огоньков` : 'лимит не выдержан, огоньков нет'}
                           </p>
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-[rgb(var(--c-zinc-500))]">Задай лимит на месяц, и огоньки заработают.</p>
+                      <p className="text-[11px] text-[rgb(var(--c-zinc-500))]">Задай лимит на месяц, и огоньки заработают.</p>
                     )}
                   </div>
                 </div>
@@ -424,7 +423,6 @@ export default function Finance({ gainXp, onPhoto }) {
                 </div>
               )
             },
-            { id: 'piggy', title: 'Копилка', node: <Piggy /> },
             {
               id: 'categories',
               title: 'Траты по категориям',
